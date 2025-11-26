@@ -1,7 +1,7 @@
 import { translations } from './translations'
 
 
-const rawBaseUrl = 'https://video.training.tecshield.net'
+const rawBaseUrl = 'https://video.trainings.tecshield.net'
 const normalizeBaseUrl = (url) => {
   if (!url) return ''
   return url.endsWith('/') ? url.slice(0, -1) : url
