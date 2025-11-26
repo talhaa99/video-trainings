@@ -1,21 +1,18 @@
 import { translations } from './translations'
 
+const DEFAULT_VIDEO_BASE = 'https://video.training.tecshield.net'
 
-const rawBaseUrl = 'https://video.trainings.tecshield.net'
 const normalizeBaseUrl = (url) => {
   if (!url) return ''
   return url.endsWith('/') ? url.slice(0, -1) : url
 }
 
-const frontendBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_FRONTEND_URL || rawBaseUrl)
+const videoBase = normalizeBaseUrl(process.env.NEXT_PUBLIC_VIDEO_DEPLOYED || DEFAULT_VIDEO_BASE)
 
 const buildAssetUrl = (path) => {
   if (!path) return ''
-  if (!frontendBase) {
-    return path
-  }
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  return `${frontendBase}${normalizedPath}`
+  return `${videoBase}${normalizedPath}`
 }
 
 const getTrainingData = (lang = 'en') => {
