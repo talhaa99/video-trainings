@@ -1,0 +1,723 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+/* Prevent zooming on touch devices */
+/* html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+} */
+
+/* Prevent double-tap zoom and all touch gestures */
+/* * {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+} */
+
+/* Additional zoom prevention */
+/* body {
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+  touch-action: manipulation;
+  overflow-x: hidden;
+} */
+
+/* Prevent zoom on input focus */
+input, textarea, select {
+  font-size: 16px !important;
+  /* -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%; */
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', 'Segoe UI', 'Tahoma', 'Arial Unicode MS', sans-serif;
+  touch-action: pan-x pan-y; /* <— key change */
+  overscroll-behavior: none;
+}
+
+/* Arabic font support */
+[dir="rtl"] {
+  font-family: 'Segoe UI', 'Tahoma', 'Arial Unicode MS', 'Arabic Typesetting', 'Traditional Arabic', 'Simplified Arabic', 'Inter', sans-serif;
+}
+
+body {
+  color: #1e293b;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(227, 27, 35, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(51, 48, 146, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(227, 27, 35, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* Optimized for 1920x1080 resolution */
+@media (min-width: 1920px) {
+  .MuiContainer-root {
+    max-width: 1600px !important;
+  }
+  
+  .MuiTypography-h1 {
+    font-size: 3rem !important;
+  }
+  
+  .MuiTypography-h2 {
+    font-size: 2.5rem !important;
+  }
+  
+  .MuiTypography-h3 {
+    font-size: 2rem !important;
+  }
+  
+  .MuiTypography-h4 {
+    font-size: 1.75rem !important;
+  }
+  
+  .MuiTypography-h5 {
+    font-size: 1.5rem !important;
+  }
+  
+  .MuiTypography-h6 {
+    font-size: 1.25rem !important;
+  }
+  
+  .MuiTypography-body1 {
+    font-size: 1.125rem !important;
+  }
+  
+  .MuiTypography-body2 {
+    font-size: 1rem !important;
+  }
+}
+
+/* Video player responsive adjustments */
+.video-player-container {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16/9;
+}
+
+.video-player-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Quiz component responsive design */
+.quiz-question-card {
+  transition: all 0.3s ease;
+}
+
+.quiz-question-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Results screen animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.results-animation {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Confetti container */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Floating animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(-20px);
+  }
+  50% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Glass morphism effect */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #e31b23 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(227, 27, 35, 0.3);
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background: linear-gradient(135deg, #e31b23 0%, #2563eb 100%);
+  }
+  50% {
+    background: linear-gradient(135deg, #2563eb 0%, #e31b23 100%);
+  }
+}
+
+/* Animated background particles */
+.particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.particle {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+.particle:nth-child(odd) {
+  animation: floatReverse 8s ease-in-out infinite;
+}
+
+/* Button hover effects */
+.MuiButton-root {
+  transition: all 0.2s ease-in-out;
+}
+
+.MuiButton-root:hover {
+  transform: translateY(-1px);
+}
+
+/* Card hover effects */
+.MuiCard-root {
+  transition: all 0.3s ease-in-out;
+}
+
+.MuiCard-root:hover {
+  transform: translateY(-2px);
+}
+
+/* Progress bar animations */
+.MuiLinearProgress-bar {
+  transition: transform 0.3s ease;
+}
+
+/* Responsive video controls */
+@media (max-width: 768px) {
+  .video-controls {
+    padding: 1rem !important;
+  }
+  
+  .video-controls .MuiIconButton-root {
+    padding: 8px !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .MuiCard-root {
+    border: 2px solid;
+  }
+  
+  .MuiButton-root {
+    border: 2px solid;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus indicators for accessibility */
+.MuiButton-root:focus-visible,
+.MuiIconButton-root:focus-visible,
+.MuiFormControlLabel-root:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Crystal Button Styles */
+.crystal-button {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  color: #333092 !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 
+    0 8px 32px rgba(51, 48, 146, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.crystal-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.crystal-button:hover::before {
+  left: 100%;
+}
+
+.crystal-button:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 2px solid rgba(51, 48, 146, 0.4) !important;
+  color: #e31b23 !important;
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 
+    0 12px 40px rgba(51, 48, 146, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1) !important;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.7) !important;
+}
+
+.crystal-button:active {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 
+    0 4px 20px rgba(51, 48, 146, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+.crystal-button-primary {
+  background: linear-gradient(135deg, rgba(227, 27, 35, 0.1) 0%, rgba(51, 48, 146, 0.1) 100%) !important;
+  border: 2px solid rgba(227, 27, 35, 0.3) !important;
+  color: #e31b23 !important;
+}
+
+.crystal-button-primary:hover {
+  background: linear-gradient(135deg, rgba(227, 27, 35, 0.2) 0%, rgba(51, 48, 146, 0.2) 100%) !important;
+  border: 2px solid rgba(227, 27, 35, 0.5) !important;
+  color: #333092 !important;
+}
+
+.crystal-button-secondary {
+  background: linear-gradient(135deg, rgba(51, 48, 146, 0.1) 0%, rgba(227, 27, 35, 0.1) 100%) !important;
+  border: 2px solid rgba(51, 48, 146, 0.3) !important;
+  color: #333092 !important;
+}
+
+.crystal-button-secondary:hover {
+  background: linear-gradient(135deg, rgba(51, 48, 146, 0.2) 0%, rgba(227, 27, 35, 0.2) 100%) !important;
+  border: 2px solid rgba(51, 48, 146, 0.5) !important;
+  color: #e31b23 !important;
+}
+
+/* CSS-based confetti animation */
+.confetti-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #e31b23;
+  animation: confetti-fall 3s linear infinite;
+}
+
+.confetti-piece:nth-child(2n) {
+  background: #333092;
+  animation-delay: 0.1s;
+}
+
+.confetti-piece:nth-child(3n) {
+  background: #e31b23;
+  animation-delay: 0.2s;
+}
+
+.confetti-piece:nth-child(4n) {
+  background: #333092;
+  animation-delay: 0.3s;
+}
+
+.confetti-piece:nth-child(5n) {
+  background: #e31b23;
+  animation-delay: 0.4s;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Print styles */
+@media print {
+  .video-player-container,
+  .confetti-container {
+    display: none !important;
+  }
+  
+  .MuiCard-root {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}
+
+* {
+  touch-action: pan-x pan-y;
+}
+
+/* RTL Support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .MuiButton-startIcon {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+[dir="rtl"] .MuiButton-endIcon {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+[dir="rtl"] .MuiChip-icon {
+  margin-right: 0;
+  margin-left: -4px;
+}
+
+[dir="rtl"] .MuiFormControlLabel-label {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+/* RTL adjustments for flex containers */
+[dir="rtl"] .MuiBox-root[style*="flex"] {
+  flex-direction: row-reverse;
+}
+
+/* RTL text alignment */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .MuiTypography-root {
+  text-align: inherit;
+}
+
+/* RTL menu positioning */
+[dir="rtl"] .MuiMenu-paper {
+  direction: rtl;
+}
+
+/* RTL card content */
+[dir="rtl"] .MuiCardContent-root {
+  text-align: right;
+}
+
+/* RTL grid adjustments */
+[dir="rtl"] .MuiGrid-container {
+  direction: rtl;
+}
+
+/* RTL list items */
+[dir="rtl"] .MuiListItem-root {
+  flex-direction: row-reverse;
+}
+
+/* RTL icon positioning */
+[dir="rtl"] .MuiListItemIcon-root {
+  margin-right: 0;
+  margin-left: 16px;
+  min-width: auto;
+}
+
+/* RTL input fields */
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  direction: rtl;
+  text-align: right;
+}
+
+/* RTL select dropdowns */
+[dir="rtl"] .MuiSelect-select {
+  text-align: right;
+  padding-right: 14px;
+  padding-left: 32px;
+}
+
+/* RTL radio buttons */
+[dir="rtl"] .MuiRadio-root {
+  margin-right: 0;
+  margin-left: 9px;
+}
+
+/* RTL checkbox */
+[dir="rtl"] .MuiCheckbox-root {
+  margin-right: 0;
+  margin-left: 9px;
+}
+
+/* RTL chip spacing */
+[dir="rtl"] .MuiChip-root {
+  direction: rtl;
+}
+
+/* RTL alert */
+[dir="rtl"] .MuiAlert-root {
+  direction: rtl;
+  text-align: right;
+}
+
+/* RTL dialog */
+[dir="rtl"] .MuiDialog-paper {
+  direction: rtl;
+}
+
+/* RTL tooltip */
+[dir="rtl"] .MuiTooltip-tooltip {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Responsive Arabic text */
+[dir="rtl"] .MuiTypography-root {
+  word-break: keep-all;
+  word-wrap: break-word;
+}
+
+/* Responsive Arabic buttons */
+[dir="rtl"] .MuiButton-root {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 600px) {
+  [dir="rtl"] .MuiTypography-h2 {
+    font-size: 1.75rem !important;
+    line-height: 1.3 !important;
+  }
+  
+  [dir="rtl"] .MuiTypography-h4 {
+    font-size: 1.25rem !important;
+  }
+  
+  [dir="rtl"] .MuiTypography-h5 {
+    font-size: 1.1rem !important;
+  }
+  
+  [dir="rtl"] .MuiButton-root {
+    font-size: 0.875rem !important;
+    padding: 8px 16px !important;
+  }
+}
+
+/* Arabic text rendering optimization */
+[dir="rtl"] {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure Arabic text doesn't break awkwardly */
+[dir="rtl"] p,
+[dir="rtl"] span,
+[dir="rtl"] div {
+  word-spacing: normal;
+  letter-spacing: normal;
+}
