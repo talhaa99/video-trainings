@@ -15,7 +15,9 @@ import {
   PlayArrow,
   Pause,
   Fullscreen,
-  FullscreenExit
+  FullscreenExit,
+  VolumeUp,
+  VolumeOff
 } from '@mui/icons-material'
 import { useLanguage } from '../contexts/LanguageContext'
 
@@ -83,6 +85,7 @@ export default function SafetyInduction({ onBack }) {
   const [wasCorrectAnswer, setWasCorrectAnswer] = useState(null)
   const [currentQuestionData, setCurrentQuestionData] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
 
@@ -95,6 +98,8 @@ export default function SafetyInduction({ onBack }) {
       // Start video from the beginning
       videoElement.currentTime = 0
       setCurrentTime(0)
+      // Sync muted state
+      setIsMuted(videoElement.muted)
       // Auto-play the video when metadata is loaded
       videoElement.play().then(() => {
         setIsPlaying(true)
@@ -271,6 +276,14 @@ export default function SafetyInduction({ onBack }) {
     } catch (error) {
       console.error('Error toggling fullscreen:', error)
     }
+  }
+
+  const handleMute = () => {
+    const videoElement = videoRef.current
+    if (!videoElement) return
+
+    videoElement.muted = !videoElement.muted
+    setIsMuted(videoElement.muted)
   }
 
   useEffect(() => {
@@ -594,7 +607,7 @@ export default function SafetyInduction({ onBack }) {
             </Box>
           )}
 
-          {/* Video Controls - Play/Pause and Fullscreen */}
+          {/* Video Controls - Play/Pause, Mute, and Fullscreen */}
           <Box
             sx={{
               position: 'absolute',
@@ -623,21 +636,39 @@ export default function SafetyInduction({ onBack }) {
               {isPlaying ? <Pause /> : <PlayArrow />}
             </Button>
 
-            <Button
-              onClick={handleFullscreen}
-              sx={{
-                color: 'white',
-                minWidth: 'auto',
-                padding: '12px',
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                borderRadius: '8px',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)'
-                }
-              }}
-            >
-              {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
-            </Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Button
+                onClick={handleMute}
+                sx={{
+                  color: 'white',
+                  minWidth: 'auto',
+                  padding: '12px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)'
+                  }
+                }}
+              >
+                {isMuted ? <VolumeOff /> : <VolumeUp />}
+              </Button>
+
+              <Button
+                onClick={handleFullscreen}
+                sx={{
+                  color: 'white',
+                  minWidth: 'auto',
+                  padding: '12px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)'
+                  }
+                }}
+              >
+                {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+              </Button>
+            </Box>
           </Box>
         </Box>
       </Card>
