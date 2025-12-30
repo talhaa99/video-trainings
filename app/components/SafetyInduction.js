@@ -20,6 +20,7 @@ import {
   VolumeOff
 } from '@mui/icons-material'
 import { useLanguage } from '../contexts/LanguageContext'
+import { getSafetyInductionVideoUrl } from '../../data/trainingData'
 
 // Convert MM:SS or MM:SS.mmm to seconds (supports milliseconds)
 const timeToSeconds = (timeString) => {
@@ -72,6 +73,7 @@ const questions = [
 export default function SafetyInduction({ onBack }) {
   const { language, t } = useLanguage()
   const videoRef = useRef(null)
+  const videoUrl = getSafetyInductionVideoUrl(language)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -488,7 +490,7 @@ export default function SafetyInduction({ onBack }) {
         >
           <video
             ref={videoRef}
-            src="/safety-enduction/video.mp4"
+            src={videoUrl}
             style={{
               width: '100%',
               height: '100%',
