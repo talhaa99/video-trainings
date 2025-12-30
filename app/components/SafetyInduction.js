@@ -92,9 +92,9 @@ export default function SafetyInduction({ onBack }) {
 
     const handleLoadedMetadata = () => {
       setDuration(videoElement.duration)
-      // TODO: REMOVE AFTER TESTING - Start video from 5:54 (354 seconds) for testing question 4 only
-      videoElement.currentTime = 354 // 5:54 in seconds (just before question 4 at 5:55)
-      setCurrentTime(354)
+      // Start video from the beginning
+      videoElement.currentTime = 0
+      setCurrentTime(0)
       // Auto-play the video when metadata is loaded
       videoElement.play().then(() => {
         setIsPlaying(true)
@@ -594,15 +594,35 @@ export default function SafetyInduction({ onBack }) {
             </Box>
           )}
 
-          {/* Fullscreen Button Only */}
+          {/* Video Controls - Play/Pause and Fullscreen */}
           <Box
             sx={{
               position: 'absolute',
               bottom: 16,
+              left: 16,
               right: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               zIndex: 5
             }}
           >
+            <Button
+              onClick={handlePlay}
+              sx={{
+                color: 'white',
+                minWidth: 'auto',
+                padding: '12px',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                borderRadius: '8px',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)'
+                }
+              }}
+            >
+              {isPlaying ? <Pause /> : <PlayArrow />}
+            </Button>
+
             <Button
               onClick={handleFullscreen}
               sx={{
