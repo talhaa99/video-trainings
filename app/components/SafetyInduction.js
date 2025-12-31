@@ -186,11 +186,9 @@ export default function SafetyInduction({ onBack }) {
 
     const handleLoadedMetadata = () => {
       setDuration(videoElement.duration)
-      // TODO: TESTING ONLY - Start video near the end to test quiz
-      // Remove this after testing - should start from beginning
-      const testStartTime = Math.max(0, videoElement.duration - 10) // Start 10 seconds before end
-      videoElement.currentTime = testStartTime
-      setCurrentTime(testStartTime)
+      // Start video from the beginning
+      videoElement.currentTime = 0
+      setCurrentTime(0)
       // Sync muted state
       setIsMuted(videoElement.muted)
       // Auto-play the video when metadata is loaded
