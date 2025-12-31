@@ -123,6 +123,28 @@ export default function SafetyInduction({ onBack }) {
     }
   }
 
+  // Helper function to check if user has skipped past an unanswered question
+  // If so, seek back to the question pause time
+  const checkForSkippedQuestion = (time) => {
+    if (currentQuestion || isProcessingAnswer || isInAnswerSegment) return null
+
+    // Find unanswered questions that come before the current time
+    const skippedQuestions = questions
+      .filter(q => {
+        if (answeredQuestions.includes(q.id)) return false
+        const pauseTime = timeToSeconds(q.pauseTime)
+        return time > pauseTime + 0.5 // We're past this question's time
+      })
+      .sort((a, b) => timeToSeconds(b.pauseTime) - timeToSeconds(a.pauseTime)) // Sort by time, most recent first
+
+    // If there's a skipped question, return its pause time
+    if (skippedQuestions.length > 0) {
+      return timeToSeconds(skippedQuestions[0].pauseTime)
+    }
+
+    return null
+  }
+
   // Helper function to check if current time is in a segment that should be skipped
   // based on user's previous answers, and skip to appropriate time if needed
   const checkAndSkipSegments = (time, forceCheck = false) => {
@@ -393,6 +415,12 @@ export default function SafetyInduction({ onBack }) {
       if (skipTo !== null && Math.abs(newTime - skipTo) < 0.5) break
     }
     
+    // Check if we've skipped past an unanswered question
+    const skippedQuestionTime = checkForSkippedQuestion(newTime)
+    if (skippedQuestionTime !== null) {
+      newTime = skippedQuestionTime
+    }
+    
     // Set the time immediately - this must happen synchronously
     videoElement.currentTime = newTime
     setCurrentTime(newTime)
@@ -404,6 +432,12 @@ export default function SafetyInduction({ onBack }) {
       if (finalSkip !== null && Math.abs(current - finalSkip) > 0.5) {
         videoElement.currentTime = finalSkip
         setCurrentTime(finalSkip)
+      }
+      // Check if we've skipped past a question
+      const skippedQTime = checkForSkippedQuestion(videoElement.currentTime)
+      if (skippedQTime !== null) {
+        videoElement.currentTime = skippedQTime
+        setCurrentTime(skippedQTime)
       }
       // Check if we landed on a question time
       setTimeout(() => {
@@ -431,6 +465,12 @@ export default function SafetyInduction({ onBack }) {
       if (skipTo !== null && Math.abs(newTime - skipTo) < 0.5) break
     }
     
+    // Check if we've skipped past an unanswered question
+    const skippedQuestionTime = checkForSkippedQuestion(newTime)
+    if (skippedQuestionTime !== null) {
+      newTime = skippedQuestionTime
+    }
+    
     // Set the time immediately - this must happen synchronously
     videoElement.currentTime = newTime
     setCurrentTime(newTime)
@@ -442,6 +482,12 @@ export default function SafetyInduction({ onBack }) {
       if (finalSkip !== null && Math.abs(current - finalSkip) > 0.5) {
         videoElement.currentTime = finalSkip
         setCurrentTime(finalSkip)
+      }
+      // Check if we've skipped past a question
+      const skippedQTime = checkForSkippedQuestion(videoElement.currentTime)
+      if (skippedQTime !== null) {
+        videoElement.currentTime = skippedQTime
+        setCurrentTime(skippedQTime)
       }
       // Check if we landed on a question time
       setTimeout(() => {
