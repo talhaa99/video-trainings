@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import {
   Box,
   Container,
@@ -19,7 +20,9 @@ import {
   VolumeUp,
   VolumeOff,
   Replay10,
-  Forward10
+  Forward10,
+  CheckCircle,
+  Cancel
 } from '@mui/icons-material'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getSafetyInductionVideoUrl } from '../../data/trainingData'
@@ -84,6 +87,13 @@ export default function SafetyInduction({ onBack }) {
   const [questionResults, setQuestionResults] = useState({}) // Track correct/incorrect answers: { questionId: true/false }
   const [isProcessingAnswer, setIsProcessingAnswer] = useState(false)
   const [videoCompleted, setVideoCompleted] = useState(false)
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [selectedQuizQuestions, setSelectedQuizQuestions] = useState([])
+  const [quizAnswers, setQuizAnswers] = useState({})
+  const [quizCompleted, setQuizCompleted] = useState(false)
+  const [quizPassed, setQuizPassed] = useState(false)
+  const [quizScore, setQuizScore] = useState(0)
+  const [currentQuizQuestionIndex, setCurrentQuizQuestionIndex] = useState(0)
   const [isInAnswerSegment, setIsInAnswerSegment] = useState(false)
   const [segmentEndTime, setSegmentEndTime] = useState(null)
   const [wasCorrectAnswer, setWasCorrectAnswer] = useState(null)
@@ -176,9 +186,11 @@ export default function SafetyInduction({ onBack }) {
 
     const handleLoadedMetadata = () => {
       setDuration(videoElement.duration)
-      // Start video from the beginning
-      videoElement.currentTime = 0
-      setCurrentTime(0)
+      // TODO: TESTING ONLY - Start video near the end to test quiz
+      // Remove this after testing - should start from beginning
+      const testStartTime = Math.max(0, videoElement.duration - 10) // Start 10 seconds before end
+      videoElement.currentTime = testStartTime
+      setCurrentTime(testStartTime)
       // Sync muted state
       setIsMuted(videoElement.muted)
       // Auto-play the video when metadata is loaded
@@ -258,6 +270,9 @@ export default function SafetyInduction({ onBack }) {
     const handleEnded = () => {
       setIsPlaying(false)
       setVideoCompleted(true)
+      // Show quiz when video ends
+      selectRandomQuizQuestions()
+      setShowQuiz(true)
     }
 
     const handleSeeked = () => {
@@ -523,6 +538,105 @@ export default function SafetyInduction({ onBack }) {
   // Calculate score from question results
   const correctAnswers = Object.values(questionResults).filter(result => result === true).length
   const scorePercentage = questions.length > 0 ? (correctAnswers / questions.length) * 100 : 0
+
+  // Select 5 random questions from the pool of 15
+  const selectRandomQuizQuestions = () => {
+    const allQuestions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
+    const selected = shuffled.slice(0, 5)
+    setSelectedQuizQuestions(selected)
+    setQuizAnswers({})
+    setQuizCompleted(false)
+    setQuizPassed(false)
+    setQuizScore(0)
+    setCurrentQuizQuestionIndex(0)
+  }
+
+  const getQuizQuestionText = (questionId) => {
+    return t(`inductionQuizQ${questionId}`)
+  }
+
+  const getQuizQuestionOptions = (questionId) => {
+    return {
+      A: t(`inductionQuizQ${questionId}A`),
+      B: t(`inductionQuizQ${questionId}B`),
+      C: t(`inductionQuizQ${questionId}C`),
+      D: t(`inductionQuizQ${questionId}D`)
+    }
+  }
+
+  const getQuizCorrectAnswer = (questionId) => {
+    return t(`inductionQuizQ${questionId}Correct`)
+  }
+
+  const handleQuizAnswer = (questionId, answer) => {
+    setQuizAnswers(prev => ({ ...prev, [questionId]: answer }))
+  }
+
+  const handleQuizSubmit = () => {
+    let correctCount = 0
+    selectedQuizQuestions.forEach(qId => {
+      const userAnswer = quizAnswers[qId]
+      const correctAnswer = getQuizCorrectAnswer(qId)
+      // Ensure both are strings and trim whitespace for comparison
+      if (String(userAnswer).trim() === String(correctAnswer).trim()) {
+        correctCount++
+      }
+    })
+    
+    setQuizScore(correctCount)
+    setQuizCompleted(true)
+    // Passing criteria: 4 out of 5 correct (80%) - 4 or more correct answers
+    const passed = correctCount >= 4
+    setQuizPassed(passed)
+    
+    // Show confetti if passed
+    if (passed) {
+      const duration = 3000
+      const animationEnd = Date.now() + duration
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 10000 }
+
+      function randomInRange(min, max) {
+        return Math.random() * (max - min) + min
+      }
+
+      const interval = setInterval(function() {
+        const timeLeft = animationEnd - Date.now()
+
+        if (timeLeft <= 0) {
+          return clearInterval(interval)
+        }
+
+        const particleCount = 50 * (timeLeft / duration)
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        })
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        })
+      }, 250)
+    }
+  }
+
+  const handleRetakeQuiz = () => {
+    selectRandomQuizQuestions()
+  }
+
+  const handleNextQuestion = () => {
+    if (currentQuizQuestionIndex < selectedQuizQuestions.length - 1) {
+      setCurrentQuizQuestionIndex(prev => prev + 1)
+    }
+  }
+
+  const handlePreviousQuestion = () => {
+    if (currentQuizQuestionIndex > 0) {
+      setCurrentQuizQuestionIndex(prev => prev - 1)
+    }
+  }
 
   // Retake Quiz handler - resets all state and restarts video
   const handleRestart = () => {
@@ -928,7 +1042,8 @@ export default function SafetyInduction({ onBack }) {
         </Box>
       </Card>
 
-      {videoCompleted && (
+      {/* Quiz Screen */}
+      {showQuiz && !quizCompleted && (
         <Box
           sx={{
             position: 'fixed',
@@ -936,12 +1051,142 @@ export default function SafetyInduction({ onBack }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: { xs: 1, sm: 2 },
+            padding: { xs: 2, sm: 4 },
+            overflow: 'auto',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          <Card
+            sx={{
+              maxWidth: '800px',
+              width: '100%',
+              animation: 'fadeInScale 0.3s ease-out',
+              p: { xs: 3, sm: 4 },
+              background: 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '16px',
+              border: '1px solid rgba(227, 27, 35, 0.2)',
+            }}
+          >
+            <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, textAlign: 'center', direction: language === 'ar' ? 'rtl' : 'ltr' }}>
+              {t('inductionQuizTitle')}
+            </Typography>
+            
+            <Typography variant="body1" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary', direction: language === 'ar' ? 'rtl' : 'ltr' }}>
+              {t('question')} {currentQuizQuestionIndex + 1} {t('of')} {selectedQuizQuestions.length}
+            </Typography>
+
+            {selectedQuizQuestions.length > 0 && (
+              <>
+                <Card sx={{ p: 3, border: '1px solid rgba(0, 0, 0, 0.1)', mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, direction: language === 'ar' ? 'rtl' : 'ltr' }}>
+                    {getQuizQuestionText(selectedQuizQuestions[currentQuizQuestionIndex])}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {Object.entries(getQuizQuestionOptions(selectedQuizQuestions[currentQuizQuestionIndex])).map(([key, value]) => (
+                      <Button
+                        key={key}
+                        variant={quizAnswers[selectedQuizQuestions[currentQuizQuestionIndex]] === key ? "contained" : "outlined"}
+                        onClick={() => handleQuizAnswer(selectedQuizQuestions[currentQuizQuestionIndex], key)}
+                        sx={{
+                          padding: '12px 20px',
+                          borderRadius: '8px',
+                          textAlign: 'left',
+                          justifyContent: 'flex-start',
+                          textTransform: 'none',
+                          direction: language === 'ar' ? 'rtl' : 'ltr',
+                          ...(quizAnswers[selectedQuizQuestions[currentQuizQuestionIndex]] === key ? {
+                            background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+                            color: 'white',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #c91a22 0%, #2a2a7a 100%)',
+                            }
+                          } : {})
+                        }}
+                      >
+                        <Box sx={{ minWidth: 32, height: 32, borderRadius: '50%', background: quizAnswers[selectedQuizQuestions[currentQuizQuestionIndex]] === key ? 'rgba(255,255,255,0.3)' : 'rgba(227, 27, 35, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mr: language === 'ar' ? 0 : 2, ml: language === 'ar' ? 2 : 0, fontWeight: 700 }}>
+                          {key}
+                        </Box>
+                        {value}
+                      </Button>
+                    ))}
+                  </Box>
+                </Card>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handlePreviousQuestion}
+                    disabled={currentQuizQuestionIndex === 0}
+                    startIcon={<ArrowBack />}
+                    sx={{
+                      fontSize: '1rem',
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t('previous')}
+                  </Button>
+
+                  {currentQuizQuestionIndex === selectedQuizQuestions.length - 1 ? (
+                    <Button
+                      variant="contained"
+                      onClick={handleQuizSubmit}
+                      disabled={!quizAnswers[selectedQuizQuestions[currentQuizQuestionIndex]]}
+                      className="crystal-button crystal-button-primary"
+                      sx={{
+                        fontSize: '1rem',
+                        padding: '14px 32px',
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t('inductionQuizSubmit')}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      onClick={handleNextQuestion}
+                      disabled={!quizAnswers[selectedQuizQuestions[currentQuizQuestionIndex]]}
+                      className="crystal-button crystal-button-primary"
+                      sx={{
+                        fontSize: '1rem',
+                        padding: '14px 32px',
+                        borderRadius: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t('next')}
+                    </Button>
+                  )}
+                </Box>
+              </>
+            )}
+          </Card>
+        </Box>
+      )}
+
+      {/* Quiz Results Screen */}
+      {showQuiz && quizCompleted && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: { xs: 2, sm: 4 },
             overflow: 'auto',
             WebkitOverflowScrolling: 'touch'
           }}
@@ -951,64 +1196,126 @@ export default function SafetyInduction({ onBack }) {
               maxWidth: '600px',
               width: '100%',
               animation: 'fadeInScale 0.3s ease-out',
-              p: 3,
+              p: 4,
               textAlign: 'center',
-              background: 'rgba(255, 255, 255, 0.95)',
+              background: 'rgba(255, 255, 255, 0.98)',
               backdropFilter: 'blur(20px)',
               borderRadius: '16px',
               border: '1px solid rgba(227, 27, 35, 0.2)',
+              boxShadow: '0 8px 32px rgba(227, 27, 35, 0.2)',
             }}
           >
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 2, direction: language === 'ar' ? 'rtl' : 'ltr' }}>
-              {t('safetyInductionComplete')}
-            </Typography>
-            <Typography variant="h6" sx={{ mb: 1, direction: language === 'ar' ? 'rtl' : 'ltr' }}>
-              {t('safetyInductionProgress')} {correctAnswers} {t('safetyInductionQuestionsCorrect')} {questions.length} {t('safetyInductionTotalQuestions')}
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={scorePercentage}
-              sx={{
-                height: 10,
-                borderRadius: 5,
-                mb: 3,
-                backgroundColor: 'rgba(227, 27, 35, 0.1)',
-                '& .MuiLinearProgress-bar': {
-                  background: getScoreColor(),
-                  borderRadius: 5,
-                }
-              }}
-            />
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                onClick={handleRestart}
-                startIcon={<PlayArrow />}
-                className="crystal-button crystal-button-primary"
-                sx={{
-                  fontSize: '1rem',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  fontWeight: 700,
-                }}
-              >
-                {t('safetyInductionRestart')}
-              </Button>
-              <Button
-                variant="outlined"
-                onClick={onBack}
-                startIcon={<ArrowBack />}
-                className="crystal-button crystal-button-secondary"
-                sx={{
-                  fontSize: '1rem',
-                  padding: '12px 24px',
-                  borderRadius: '12px',
-                  fontWeight: 700,
-                }}
-              >
-                {t('safetyInductionBackToHome')}
-              </Button>
-            </Box>
+            {quizPassed ? (
+              <>
+                <Box
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 24px',
+                    boxShadow: '0 8px 24px rgba(227, 27, 35, 0.4)',
+                  }}
+                >
+                  <CheckCircle sx={{ fontSize: 60, color: 'white' }} />
+                </Box>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 2, 
+                    background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    direction: language === 'ar' ? 'rtl' : 'ltr',
+                  }}
+                >
+                  {t('inductionQuizPassed')}
+                </Typography>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    mb: 3, 
+                    color: '#1e293b',
+                    direction: language === 'ar' ? 'rtl' : 'ltr',
+                    fontWeight: 500
+                  }}
+                >
+                  {t('inductionQuizPassedMessage').replace('{score}', quizScore)}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={onBack}
+                  className="crystal-button crystal-button-primary"
+                  sx={{
+                    fontSize: '1rem',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {t('safetyInductionBackToHome')}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Box
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 24px',
+                    boxShadow: '0 8px 24px rgba(227, 27, 35, 0.4)',
+                    opacity: 0.7,
+                  }}
+                >
+                  <Cancel sx={{ fontSize: 60, color: 'white' }} />
+                </Box>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: 700, 
+                    mb: 2, 
+                    color: '#e31b23',
+                    direction: language === 'ar' ? 'rtl' : 'ltr',
+                  }}
+                >
+                  {t('inductionQuizFailed')}
+                </Typography>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    mb: 3, 
+                    color: '#1e293b',
+                    direction: language === 'ar' ? 'rtl' : 'ltr',
+                    fontWeight: 500
+                  }}
+                >
+                  {t('inductionQuizFailedMessage').replace('{score}', quizScore)}
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={handleRetakeQuiz}
+                  className="crystal-button crystal-button-primary"
+                  sx={{
+                    fontSize: '1rem',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {t('inductionQuizRetake')}
+                </Button>
+              </>
+            )}
           </Card>
         </Box>
       )}
