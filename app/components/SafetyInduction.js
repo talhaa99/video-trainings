@@ -39,7 +39,7 @@ const timeToSeconds = (timeString) => {
 const questions = [
   {
     id: 1,
-    pauseTime: '3:33',
+    pauseTime: '3:34',
     correctAnswer: 'B',
     correctSkip: '3:33', // Start correct answer segment
     correctEnd: '3:57', // End of correct answer segment (before incorrect segment starts)
@@ -48,7 +48,7 @@ const questions = [
   },
   {
     id: 2,
-    pauseTime: '4:31',
+    pauseTime: '4:32',
     correctAnswer: 'B',
     wrongSkip: '4:32', // Start wrong answer segment
     wrongEnd: '4:49', // End of wrong answer segment (before correct segment starts)
@@ -57,16 +57,16 @@ const questions = [
   },
   {
     id: 3,
-    pauseTime: '5:13',
+    pauseTime: '5:14',
     correctAnswer: 'A',
     wrongSkip: '5:13', // Start wrong answer segment
     wrongEnd: '5:23', // End of wrong answer segment (before correct segment starts)
-    correctSkip: '5:23', // Start correct answer segment
+    correctSkip: '5:24', // Start correct answer segment
     correctEnd: '5:33', // End of correct answer segment
   },
   {
     id: 4,
-    pauseTime: '6:08',
+    pauseTime: '6:09',
     correctAnswer: 'A',
     wrongSkip: '6:09', // Start wrong answer segment
     wrongEnd: '6:15', // End of wrong answer segment (before correct segment starts)
@@ -208,9 +208,9 @@ export default function SafetyInduction({ onBack }) {
 
     const handleLoadedMetadata = () => {
       setDuration(videoElement.duration)
-      // Start video from the beginning
-      videoElement.currentTime = 0
-      setCurrentTime(0)
+      // Start video from 3:25 for testing (will be removed after testing)
+      videoElement.currentTime = 205 // 3:25 = 3*60 + 25 = 205 seconds
+      setCurrentTime(205)
       // Sync muted state
       setIsMuted(videoElement.muted)
       // Auto-play the video when metadata is loaded
