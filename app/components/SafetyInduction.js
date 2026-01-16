@@ -208,9 +208,9 @@ export default function SafetyInduction({ onBack }) {
 
     const handleLoadedMetadata = () => {
       setDuration(videoElement.duration)
-      // Start video from 3:25 for testing (will be removed after testing)
-      videoElement.currentTime = 205 // 3:25 = 3*60 + 25 = 205 seconds
-      setCurrentTime(205)
+      // Start video from the beginning
+      videoElement.currentTime = 0
+      setCurrentTime(0)
       // Sync muted state
       setIsMuted(videoElement.muted)
       // Auto-play the video when metadata is loaded
