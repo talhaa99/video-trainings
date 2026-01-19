@@ -28,6 +28,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { getSafetyInductionVideoUrl } from '../../data/trainingData'
 
 // Convert MM:SS or MM:SS.mmm to seconds (supports milliseconds)
+// Format examples: '3:34' or '3:34.500' (minutes:seconds.milliseconds)
 const timeToSeconds = (timeString) => {
   const parts = timeString.split(':')
   const minutes = parseInt(parts[0])
@@ -36,42 +37,88 @@ const timeToSeconds = (timeString) => {
 }
 
 // Questions configuration
+// Time format: MM:SS or MM:SS.mmm (e.g., '3:34' or '3:34.500')
+// Each question has separate timings for English (en) and Arabic (ar) versions
 const questions = [
   {
     id: 1,
-    pauseTime: '3:34',
     correctAnswer: 'B',
-    correctSkip: '3:33', // Start correct answer segment
-    correctEnd: '3:57', // End of correct answer segment (before incorrect segment starts)
-    wrongSkip: '3:57', // Start wrong answer segment
-    wrongEnd: '4:10', // End of wrong answer segment
+    timings: {
+      en: {
+        pauseTime: '3:33.500',
+        correctSkip: '3:33.600', // Start correct answer segment
+        correctEnd: '3:57', // End of correct answer segment (before incorrect segment starts)
+        wrongSkip: '3:58', // Start wrong answer segment
+        wrongEnd: '4:11', // End of wrong answer segment
+      },
+      ar: {
+        pauseTime: '3:34',
+        correctSkip: '3:34.500', // Start correct answer segment
+        correctEnd: '3:57', // End of correct answer segment (before incorrect segment starts)
+        wrongSkip: '3:58', // Start wrong answer segment
+        wrongEnd: '4:11', // End of wrong answer segment
+      }
+    }
   },
   {
     id: 2,
-    pauseTime: '4:32',
     correctAnswer: 'B',
-    wrongSkip: '4:32', // Start wrong answer segment
-    wrongEnd: '4:49', // End of wrong answer segment (before correct segment starts)
-    correctSkip: '4:50', // Start correct answer segment
-    correctEnd: '4:59', // End of correct answer segment
+    timings: {
+      en: {
+        pauseTime: '4:31.200',
+        wrongSkip: '4:31.300', // Start wrong answer segment
+        wrongEnd: '4:48.300', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '4:49', // Start correct answer segment
+        correctEnd: '5:00', // End of correct answer segment
+      },
+      ar: {
+        pauseTime: '4:32',
+        wrongSkip: '4:32', // Start wrong answer segment
+        wrongEnd: '4:48.300', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '4:49', // Start correct answer segment
+        correctEnd: '5:00', // End of correct answer segment
+      }
+    }
   },
   {
     id: 3,
-    pauseTime: '5:14',
     correctAnswer: 'A',
-    wrongSkip: '5:13', // Start wrong answer segment
-    wrongEnd: '5:23', // End of wrong answer segment (before correct segment starts)
-    correctSkip: '5:24', // Start correct answer segment
-    correctEnd: '5:33', // End of correct answer segment
+    timings: {
+      en: {
+        pauseTime: '5:13',
+        wrongSkip: '5:14', // Start wrong answer segment
+        wrongEnd: '5:23', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '5:24', // Start correct answer segment
+        correctEnd: '5:34', // End of correct answer segment
+      },
+      ar: {
+        pauseTime: '5:13.500',
+        wrongSkip: '5:14', // Start wrong answer segment
+        wrongEnd: '5:23.600', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '5:24', // Start correct answer segment
+        correctEnd: '5:34', // End of correct answer segment
+      }
+    }
   },
   {
     id: 4,
-    pauseTime: '6:09',
     correctAnswer: 'A',
-    wrongSkip: '6:09', // Start wrong answer segment
-    wrongEnd: '6:15', // End of wrong answer segment (before correct segment starts)
-    correctSkip: '6:15', // Start correct answer segment
-    correctEnd: '6:23', // End of correct answer segment
+    timings: {
+      en: {
+        pauseTime: '6:09',
+        wrongSkip: '6:09', // Start wrong answer segment
+        wrongEnd: '6:15', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '6:15.100', // Start correct answer segment
+        correctEnd: '6:24', // End of correct answer segment
+      },
+      ar: {
+        pauseTime: '6:09.200',
+        wrongSkip: '6:09.300', // Start wrong answer segment
+        wrongEnd: '6:15', // End of wrong answer segment (before correct segment starts)
+        correctSkip: '6:15.100', // Start correct answer segment
+        correctEnd: '6:24', // End of correct answer segment
+      }
+    }
   }
 ]
 
@@ -103,13 +150,19 @@ export default function SafetyInduction({ onBack }) {
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
 
+  // Helper function to get question timings for current language
+  const getQuestionTimings = (question) => {
+    return question.timings[language] || question.timings.en // Fallback to English if language not found
+  }
+
   // Helper function to check if there's a question at a specific time
   const checkForQuestionAtTime = (time) => {
     if (currentQuestion || isProcessingAnswer || isInAnswerSegment) return
 
     const questionToShow = questions.find((q) => {
       if (answeredQuestions.includes(q.id)) return false
-      const pauseTime = timeToSeconds(q.pauseTime)
+      const timings = getQuestionTimings(q)
+      const pauseTime = timeToSeconds(timings.pauseTime)
       return time >= pauseTime - 0.1 && time < pauseTime + 0.5
     })
 
@@ -132,14 +185,20 @@ export default function SafetyInduction({ onBack }) {
     const skippedQuestions = questions
       .filter(q => {
         if (answeredQuestions.includes(q.id)) return false
-        const pauseTime = timeToSeconds(q.pauseTime)
+        const timings = getQuestionTimings(q)
+        const pauseTime = timeToSeconds(timings.pauseTime)
         return time > pauseTime + 0.5 // We're past this question's time
       })
-      .sort((a, b) => timeToSeconds(b.pauseTime) - timeToSeconds(a.pauseTime)) // Sort by time, most recent first
+      .sort((a, b) => {
+        const timingsA = getQuestionTimings(a)
+        const timingsB = getQuestionTimings(b)
+        return timeToSeconds(timingsB.pauseTime) - timeToSeconds(timingsA.pauseTime) // Sort by time, most recent first
+      })
 
     // If there's a skipped question, return its pause time
     if (skippedQuestions.length > 0) {
-      return timeToSeconds(skippedQuestions[0].pauseTime)
+      const timings = getQuestionTimings(skippedQuestions[0])
+      return timeToSeconds(timings.pauseTime)
     }
 
     return null
@@ -158,11 +217,12 @@ export default function SafetyInduction({ onBack }) {
       const question = questions.find(q => q.id === questionId)
       if (!question) continue
 
+      const timings = getQuestionTimings(question)
       const wasCorrect = questionResults[questionId]
-      const correctStart = timeToSeconds(question.correctSkip)
-      const correctEnd = timeToSeconds(question.correctEnd)
-      const wrongStart = timeToSeconds(question.wrongSkip)
-      const wrongEnd = timeToSeconds(question.wrongEnd)
+      const correctStart = timeToSeconds(timings.correctSkip)
+      const correctEnd = timeToSeconds(timings.correctEnd)
+      const wrongStart = timeToSeconds(timings.wrongSkip)
+      const wrongEnd = timeToSeconds(timings.wrongEnd)
 
       if (wasCorrect) {
         // User answered CORRECTLY - they should see correct segment, skip wrong segment
@@ -229,8 +289,9 @@ export default function SafetyInduction({ onBack }) {
       // If we're in an answer segment, check if we've reached the end
       if (isInAnswerSegment && segmentEndTime !== null && currentQuestionData) {
         if (current >= segmentEndTime - 0.1) {
-          const wrongEndTime = timeToSeconds(currentQuestionData.wrongEnd)
-          const correctEndTime = timeToSeconds(currentQuestionData.correctEnd)
+          const timings = getQuestionTimings(currentQuestionData)
+          const wrongEndTime = timeToSeconds(timings.wrongEnd)
+          const correctEndTime = timeToSeconds(timings.correctEnd)
 
           // If correct answer was selected and wrong segment comes after correct segment, skip it
           // (e.g., Q1: correct 3:19-3:42, wrong 3:42-3:55, skip 3:42-3:55)
@@ -274,7 +335,8 @@ export default function SafetyInduction({ onBack }) {
           // Check if we haven't answered this question yet
           if (answeredQuestions.includes(q.id)) return false
 
-          const pauseTime = timeToSeconds(q.pauseTime)
+          const timings = getQuestionTimings(q)
+          const pauseTime = timeToSeconds(timings.pauseTime)
           // Pause at the question time
           return current >= pauseTime - 0.1 && current < pauseTime + 0.5
         })
@@ -346,22 +408,23 @@ export default function SafetyInduction({ onBack }) {
 
     const isCorrect = answer === currentQuestion.correctAnswer
     const questionId = currentQuestion.id
-    
+
     // Mark question as answered
     setAnsweredQuestions(prev => [...prev, questionId])
     // Track the result (correct/incorrect)
     setQuestionResults(prev => ({ ...prev, [questionId]: isCorrect }))
 
     // Determine which segment to play and where it ends
+    const timings = getQuestionTimings(currentQuestion)
     let skipTo
     let endTime
 
     if (isCorrect) {
-      skipTo = timeToSeconds(currentQuestion.correctSkip)
-      endTime = timeToSeconds(currentQuestion.correctEnd)
+      skipTo = timeToSeconds(timings.correctSkip)
+      endTime = timeToSeconds(timings.correctEnd)
     } else {
-      skipTo = timeToSeconds(currentQuestion.wrongSkip)
-      endTime = timeToSeconds(currentQuestion.wrongEnd)
+      skipTo = timeToSeconds(timings.wrongSkip)
+      endTime = timeToSeconds(timings.wrongEnd)
     }
 
     // Hide question overlay
@@ -402,7 +465,7 @@ export default function SafetyInduction({ onBack }) {
     if (!videoElement || duration === 0) return
 
     let newTime = Math.min(videoElement.currentTime + 10, duration)
-    
+
     // Check if the new time is in a segment that should be skipped (force check even if in answer segment)
     let skipTo = checkAndSkipSegments(newTime, true)
     let iterations = 0
@@ -414,17 +477,17 @@ export default function SafetyInduction({ onBack }) {
       // Prevent infinite loop
       if (skipTo !== null && Math.abs(newTime - skipTo) < 0.5) break
     }
-    
+
     // Check if we've skipped past an unanswered question
     const skippedQuestionTime = checkForSkippedQuestion(newTime)
     if (skippedQuestionTime !== null) {
       newTime = skippedQuestionTime
     }
-    
+
     // Set the time immediately - this must happen synchronously
     videoElement.currentTime = newTime
     setCurrentTime(newTime)
-    
+
     // Immediately check again after setting (sometimes the video doesn't update instantly)
     requestAnimationFrame(() => {
       const current = videoElement.currentTime
@@ -452,7 +515,7 @@ export default function SafetyInduction({ onBack }) {
     if (!videoElement || duration === 0) return
 
     let newTime = Math.max(videoElement.currentTime - 10, 0)
-    
+
     // Check if the new time is in a segment that should be skipped (force check even if in answer segment)
     let skipTo = checkAndSkipSegments(newTime, true)
     let iterations = 0
@@ -464,17 +527,17 @@ export default function SafetyInduction({ onBack }) {
       // Prevent infinite loop
       if (skipTo !== null && Math.abs(newTime - skipTo) < 0.5) break
     }
-    
+
     // Check if we've skipped past an unanswered question
     const skippedQuestionTime = checkForSkippedQuestion(newTime)
     if (skippedQuestionTime !== null) {
       newTime = skippedQuestionTime
     }
-    
+
     // Set the time immediately - this must happen synchronously
     videoElement.currentTime = newTime
     setCurrentTime(newTime)
-    
+
     // Immediately check again after setting (sometimes the video doesn't update instantly)
     requestAnimationFrame(() => {
       const current = videoElement.currentTime
@@ -627,13 +690,13 @@ export default function SafetyInduction({ onBack }) {
         correctCount++
       }
     })
-    
+
     setQuizScore(correctCount)
     setQuizCompleted(true)
     // Passing criteria: 4 out of 5 correct (80%) - 4 or more correct answers
     const passed = correctCount >= 4
     setQuizPassed(passed)
-    
+
     // Show confetti if passed
     if (passed) {
       const duration = 3000
@@ -644,7 +707,7 @@ export default function SafetyInduction({ onBack }) {
         return Math.random() * (max - min) + min
       }
 
-      const interval = setInterval(function() {
+      const interval = setInterval(function () {
         const timeLeft = animationEnd - Date.now()
 
         if (timeLeft <= 0) {
@@ -689,7 +752,7 @@ export default function SafetyInduction({ onBack }) {
       videoElement.currentTime = 0
       videoElement.pause()
     }
-    
+
     // Reset all state
     setCurrentQuestion(null)
     setAnsweredQuestions([])
@@ -702,7 +765,7 @@ export default function SafetyInduction({ onBack }) {
     setCurrentQuestionData(null)
     setCurrentTime(0)
     setIsPlaying(false)
-    
+
     // Start video after a brief delay
     setTimeout(() => {
       if (videoElement) {
@@ -1034,10 +1097,10 @@ export default function SafetyInduction({ onBack }) {
               </Button>
             </Box>
 
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: 'white', 
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'white',
                 minWidth: 100,
                 textAlign: 'center',
                 fontWeight: 500,
@@ -1120,7 +1183,7 @@ export default function SafetyInduction({ onBack }) {
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, textAlign: 'center', direction: language === 'ar' ? 'rtl' : 'ltr' }}>
               {t('inductionQuizTitle')}
             </Typography>
-            
+
             <Typography variant="body1" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary', direction: language === 'ar' ? 'rtl' : 'ltr' }}>
               {t('question')} {currentQuizQuestionIndex + 1} {t('of')} {selectedQuizQuestions.length}
             </Typography>
@@ -1266,11 +1329,11 @@ export default function SafetyInduction({ onBack }) {
                 >
                   <CheckCircle sx={{ fontSize: 60, color: 'white' }} />
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 700, 
-                    mb: 2, 
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 2,
                     background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
@@ -1280,10 +1343,10 @@ export default function SafetyInduction({ onBack }) {
                 >
                   {t('inductionQuizPassed')}
                 </Typography>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    mb: 3, 
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 3,
                     color: '#1e293b',
                     direction: language === 'ar' ? 'rtl' : 'ltr',
                     fontWeight: 500
@@ -1323,21 +1386,21 @@ export default function SafetyInduction({ onBack }) {
                 >
                   <Cancel sx={{ fontSize: 60, color: 'white' }} />
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 700, 
-                    mb: 2, 
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 2,
                     color: '#e31b23',
                     direction: language === 'ar' ? 'rtl' : 'ltr',
                   }}
                 >
                   {t('inductionQuizFailed')}
                 </Typography>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    mb: 3, 
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 3,
                     color: '#1e293b',
                     direction: language === 'ar' ? 'rtl' : 'ltr',
                     fontWeight: 500
