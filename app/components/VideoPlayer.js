@@ -297,7 +297,7 @@ export default function VideoPlayer({ video, onComplete, onBack }) {
             }}
             poster={video.thumbnail}
             autoPlay
-            muted
+            // muted
           />
 
           {/* Video Controls Overlay */}
