@@ -149,7 +149,6 @@ export default function SafetyInduction({ onBack }) {
   const [isMuted, setIsMuted] = useState(false)
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
-  const [showStartPrompt, setShowStartPrompt] = useState(true)
 
   // Helper function to get question timings for current language
   const getQuestionTimings = (question) => {
@@ -283,8 +282,43 @@ export default function SafetyInduction({ onBack }) {
         console.log('handleLoadedMetadata: failed to read video properties', e)
       }
 
-      // Autoplay disabled: waiting for user action to start the video with sound.
-      console.log('handleLoadedMetadata: autoplay disabled; awaiting user start. current muted=', videoElement.muted)
+      // Auto-play logic with detailed logs to detect autoplay/mute restrictions
+      (async () => {
+        try {
+          const prevMuted = videoElement.muted
+          console.log('handleLoadedMetadata: attempting unmuted autoplay (temp unmute). prevMuted=', prevMuted)
+          // Try unmuted autoplay first
+          videoElement.muted = false
+          try {
+            await videoElement.play()
+            console.log('handleLoadedMetadata: unmuted autoplay succeeded')
+            setIsPlaying(true)
+            setIsMuted(false)
+            return
+          } catch (unmutedErr) {
+            console.warn('handleLoadedMetadata: unmuted autoplay rejected:', unmutedErr && (unmutedErr.name || unmutedErr.message) || unmutedErr)
+            // Try muted autoplay as fallback
+            videoElement.muted = true
+            try {
+              await videoElement.play()
+              console.log('handleLoadedMetadata: muted autoplay succeeded (fallback)')
+              setIsPlaying(true)
+              setIsMuted(true)
+              return
+            } catch (mutedErr) {
+              console.error('handleLoadedMetadata: muted autoplay also failed:', mutedErr && (mutedErr.name || mutedErr.message) || mutedErr)
+              // restore previous muted state
+              videoElement.muted = prevMuted
+              setIsMuted(prevMuted)
+              setIsPlaying(false)
+              return
+            }
+          }
+        } catch (err) {
+          console.error('handleLoadedMetadata: unexpected error during autoplay attempts', err)
+          setIsPlaying(false)
+        }
+      })()
     }
 
     const handleTimeUpdate = () => {
@@ -484,37 +518,6 @@ export default function SafetyInduction({ onBack }) {
     } else {
       videoElement.play()
       setIsPlaying(true)
-    }
-  }
-
-  // User-initiated start: play unmuted, fallback to muted if necessary
-  const handleUserStart = async () => {
-    const v = videoRef.current
-    if (!v) {
-      console.log('handleUserStart: no video element')
-      return
-    }
-
-    try {
-      console.log('handleUserStart: attempting to play unmuted')
-      v.muted = false
-      await v.play()
-      console.log('handleUserStart: unmuted play succeeded')
-      setIsPlaying(true)
-      setIsMuted(false)
-      setShowStartPrompt(false)
-    } catch (err) {
-      console.warn('handleUserStart: unmuted play failed, trying muted fallback', err)
-      try {
-        v.muted = true
-        await v.play()
-        console.log('handleUserStart: muted fallback play succeeded')
-        setIsPlaying(true)
-        setIsMuted(true)
-        setShowStartPrompt(false)
-      } catch (err2) {
-        console.error('handleUserStart: muted fallback also failed', err2)
-      }
     }
   }
 
@@ -989,87 +992,6 @@ export default function SafetyInduction({ onBack }) {
             controls={false}
             onContextMenu={(e) => e.preventDefault()}
           />
-
-          {/* Start Prompt Overlay */}
-          {showStartPrompt && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(0,0,0,0.6)',
-                p: 2
-              }}
-            >
-              <Card
-                sx={{
-                  width: { xs: '100%', sm: 560 },
-                  borderRadius: 3,
-                  overflow: 'hidden',
-                  boxShadow: '0 30px 60px rgba(0,0,0,0.5)'
-                }}
-              >
-                <Box
-                  sx={{
-                    background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
-                    color: 'white',
-                    p: 3,
-                    textAlign: 'center'
-                  }}
-                >
-                  <Typography variant="h5" sx={{ fontWeight: 800 }}>
-                    {t('startTraining') || 'Start Video'}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="body1" sx={{ mb: 2, color: '#0f172a' }}>
-                    {t('safetyInductionStartDescription') ||
-                      'This video contains interactive checkpoints. Click Start to play the video with sound. You can return to the previous screen using Cancel.'}
-                  </Typography>
-
-                  <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      onClick={handleUserStart}
-                      startIcon={<PlayArrow />}
-                      className="crystal-button crystal-button-primary"
-                      sx={{
-                        fontSize: '1rem',
-                        padding: '10px 28px',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)'
-                      }}
-                    >
-                      {t('startTraining') || 'Start'}
-                    </Button>
-
-                    <Button
-                      variant="outlined"
-                      onClick={onBack}
-                      startIcon={<ArrowBack />}
-                      sx={{
-                        fontSize: '1rem',
-                        padding: '10px 24px',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        borderColor: 'rgba(16,24,40,0.08)'
-                      }}
-                    >
-                      {t('backToLanding') || t('backToHome') || 'Back'}
-                    </Button>
-                  </Box>
-                </Box>
-              </Card>
-            </Box>
-          )}
 
           {/* Question Overlay */}
           {currentQuestion && (
@@ -1578,5 +1500,4 @@ export default function SafetyInduction({ onBack }) {
     </Container>
   )
 }
-
 
