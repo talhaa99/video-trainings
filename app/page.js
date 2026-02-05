@@ -456,7 +456,7 @@ export default function Home() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2rem',
+      px: '2rem',
     }}>
       {renderCurrentView()}
     </Box>

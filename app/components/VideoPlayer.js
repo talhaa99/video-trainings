@@ -25,7 +25,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 
 export default function VideoPlayer({ video, onComplete, onBack }) {
   const { language, t } = useLanguage()
-  console.log('VideoPlayer rendered with video:', video)
+  // debug logs removed
   const [isPlaying, setIsPlaying] = useState(true)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -49,11 +49,9 @@ export default function VideoPlayer({ video, onComplete, onBack }) {
     setIsPlaying(true)
 
     const handleLoadedMetadata = () => {
-      console.log('Video metadata loaded, duration:', videoElement.duration)
       setDuration(videoElement.duration)
-      // Auto-play the video when metadata is loaded
-      videoElement.play().catch((error) => {
-        console.log('Autoplay failed:', error)
+      // Auto-play the video when metadata is loaded (muted autoplay)
+      videoElement.play().catch(() => {
         setIsPlaying(false)
       })
     }
@@ -63,7 +61,6 @@ export default function VideoPlayer({ video, onComplete, onBack }) {
     }
 
     const handleEnded = () => {
-      console.log('Video ended, calling onComplete')
       setIsPlaying(false)
       setVideoCompleted(true)
       onComplete()
@@ -136,14 +133,14 @@ export default function VideoPlayer({ video, onComplete, onBack }) {
         await containerRef.current.requestFullscreen()
         setIsFullscreen(true)
       } catch (error) {
-        console.error('Error attempting to enable fullscreen:', error)
+        // ignore fullscreen enable errors
       }
     } else {
       try {
         await document.exitFullscreen()
         setIsFullscreen(false)
       } catch (error) {
-        console.error('Error attempting to exit fullscreen:', error)
+        // ignore fullscreen exit errors
       }
     }
   }
