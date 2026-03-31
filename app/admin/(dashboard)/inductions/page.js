@@ -14,7 +14,7 @@ export default async function InductionsPage() {
       ...assignment,
       name: isEmployee ? assignment.employee_name : assignment.external_name,
       email: isEmployee ? assignment.employee_email : assignment.external_email,
-      linkUrl: `${appBaseUrl}/induction/${assignment.access_token}`,
+      linkUrl: `${appBaseUrl}/?assignment=${assignment.access_token}`,
     }
   })
 
