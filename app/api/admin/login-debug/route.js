@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { summarizeDatabaseUrl } from '../../../../lib/debug/admin-auth-log'
+import { countAdmins } from '../../../../lib/auth/admin-service'
 import { pingNeonDatabase } from '../../../../lib/db/neon'
 
 /**
@@ -16,8 +17,18 @@ export async function GET() {
   const jwtConfigured = Boolean(process.env.ADMIN_JWT_SECRET)
   const ping = await pingNeonDatabase()
 
+  let adminsRowCount = null
+  let adminsCountError = null
+  try {
+    adminsRowCount = await countAdmins()
+  } catch (e) {
+    adminsCountError = e?.message ?? String(e)
+  }
+
   const body = {
     ok: ping.ok && databaseSummary.configured && jwtConfigured,
+    adminsRowCount,
+    adminsCountError,
     env: {
       nodeEnv: process.env.NODE_ENV,
       databaseUrlConfigured: databaseSummary.configured,
