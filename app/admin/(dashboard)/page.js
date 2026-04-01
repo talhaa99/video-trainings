@@ -1,11 +1,5 @@
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material'
-
-const summaryCards = [
-  { label: 'Employees', value: '--', hint: 'Will connect in Phase 2' },
-  { label: 'Open Inductions', value: '--', hint: 'Will connect in Phase 2' },
-  { label: 'Training Records', value: '--', hint: 'Will connect in Phase 2' },
-  { label: 'Pending Certificates', value: '--', hint: 'Will connect in Phase 2' },
-]
+import { getAdminDashboardStats } from '../../../lib/admin/phase2a-service'
 
 const surfaceCardSx = {
   borderRadius: 2.5,
@@ -14,7 +8,22 @@ const surfaceCardSx = {
   boxShadow: '0 14px 34px rgba(15, 23, 42, 0.06)',
 }
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const stats = await getAdminDashboardStats()
+
+  const summaryCards = [
+    {
+      label: 'Employees',
+      value: String(stats.employeeCount),
+      hint: 'Total registered employees',
+    },
+    {
+      label: 'Safety Inductions',
+      value: String(stats.inductionAssignmentCount),
+      hint: 'Total assignments sent (all recipients)',
+    },
+  ]
+
   return (
     <Box sx={{ width: '100%', maxWidth: 1320, mx: 'auto' }}>
       <Stack spacing={{ xs: 2.25, md: 3 }}>
@@ -23,7 +32,7 @@ export default function AdminDashboardPage() {
             Dashboard Overview
           </Typography>
           <Typography sx={{ color: '#64748b', mt: 0.75, lineHeight: 1.6 }}>
-            Foundation shell is active. Data modules are intentionally placeholders in this phase.
+            Quick snapshot of live data from your Petrogas E&amp;P admin workspace.
           </Typography>
         </Box>
 
@@ -34,7 +43,6 @@ export default function AdminDashboardPage() {
             gridTemplateColumns: {
               xs: '1fr',
               md: 'repeat(2, minmax(0, 1fr))',
-              lg: 'repeat(4, minmax(0, 1fr))',
             },
           }}
         >
@@ -65,23 +73,6 @@ export default function AdminDashboardPage() {
             </Card>
           ))}
         </Box>
-
-        <Card
-          elevation={0}
-          sx={{
-            ...surfaceCardSx,
-          }}
-        >
-          <CardContent sx={{ p: { xs: 2.25, sm: 2.75, md: 3.25 } }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>
-              Next Modules (Planned)
-            </Typography>
-            <Typography sx={{ color: '#64748b', lineHeight: 1.7, maxWidth: 900 }}>
-              Employees, inductions, assignments, records, certificates, and reports will be wired to real data in
-              upcoming phases.
-            </Typography>
-          </CardContent>
-        </Card>
       </Stack>
     </Box>
   )
