@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "node scripts/migrate-admin.js",
+    "admin:seed": "node scripts/seed-admin.js"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -14,8 +16,13 @@
     "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.14.20",
     "@mui/system": "^5.14.20",
+    "@neondatabase/serverless": "^1.0.2",
+    "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
+    "jose": "^6.2.2",
     "next": "14.0.3",
+    "nodemailer": "^8.0.4",
+    "pg": "^8.20.0",
     "react": "^18",
     "react-dom": "^18"
   },

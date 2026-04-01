@@ -22,16 +22,21 @@ import SafetyInduction from './components/SafetyInduction'
 import AnimatedBackground from './components/AnimatedBackground'
 import { getTrainingData } from '../data/trainingData'
 import { useLanguage } from './contexts/LanguageContext'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function Home() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { language, t } = useLanguage()
   const [currentView, setCurrentView] = useState('landing') // landing, home, video, quiz, results, safetyInduction
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [quizResults, setQuizResults] = useState([])
   const [currentQuizAnswers, setCurrentQuizAnswers] = useState({})
+  const [assignmentState, setAssignmentState] = useState({ status: 'idle', reason: null, token: null })
   
   // Get training data based on current language
   const trainingData = getTrainingData(language)
+  const assignmentToken = searchParams.get('assignment')
 
   console.log('Current view:', currentView, 'Current video index:', currentVideoIndex)
 
@@ -95,6 +100,10 @@ export default function Home() {
     setCurrentView('landing')
   }
 
+  const clearAssignmentFromUrl = () => {
+    router.replace('/', { scroll: false })
+  }
+
   const getCurrentQuiz = () => {
     return trainingData.quizzes.find(quiz => quiz.videoId === trainingData.videos[currentVideoIndex].id)
   }
@@ -106,6 +115,77 @@ export default function Home() {
       // Keep current view but data will be updated via getTrainingData
     }
   }, [language])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function resolveAssignment(token) {
+      try {
+        setAssignmentState({ status: 'loading', reason: null, token })
+        const response = await fetch(`/api/assignments/resolve?token=${encodeURIComponent(token)}`)
+        const data = await response.json()
+
+        if (!isMounted) return
+        if (!response.ok || !data?.valid) {
+          setAssignmentState({ status: 'invalid', reason: data?.reason || 'invalid', token })
+          setCurrentView('landing')
+          return
+        }
+
+        setAssignmentState({ status: 'ready', reason: null, token })
+        setCurrentView('landing')
+      } catch (_error) {
+        if (!isMounted) return
+        setAssignmentState({ status: 'invalid', reason: 'invalid', token })
+        setCurrentView('landing')
+      }
+    }
+
+    if (assignmentToken) {
+      resolveAssignment(assignmentToken)
+    } else {
+      setAssignmentState({ status: 'idle', reason: null, token: null })
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [assignmentToken])
+
+  const trackAssignedEvent = async (eventType, payload = {}) => {
+    if (!assignmentToken) return
+    try {
+      await fetch('/api/assignments/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: assignmentToken,
+          eventType,
+          payload,
+        }),
+      })
+    } catch (_error) {
+      // Tracking should never block the user journey.
+    }
+  }
+
+  const renderAssignmentInvalidState = () => (
+    <Container maxWidth="sm" sx={{ py: 6 }}>
+      <Card sx={{ borderRadius: 3, border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: '#1e293b', mb: 1 }}>
+            Invalid or Unusable Link
+          </Typography>
+          <Typography sx={{ color: '#64748b', mb: 3 }}>
+            This Safety Induction link is invalid, expired, or already completed. Please contact Petrogas E&amp;P administration for a new assignment.
+          </Typography>
+          <Button variant="contained" onClick={clearAssignmentFromUrl}>
+            Go to Homepage
+          </Button>
+        </CardContent>
+      </Card>
+    </Container>
+  )
 
   const renderHomeView = () => (
     <Container maxWidth="lg" sx={{ py: 4, width: '100%' }}>
@@ -415,9 +495,48 @@ export default function Home() {
   const renderCurrentView = () => {
     switch (currentView) {
       case 'landing':
-        return <LandingPage onStartTraining={handleStartTraining} onStartSafetyInduction={handleStartSafetyInduction} />
+        if (assignmentToken && assignmentState.status === 'loading') {
+          return (
+            <Container maxWidth="sm" sx={{ py: 6 }}>
+              <Card sx={{ borderRadius: 3, border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+                <CardContent sx={{ p: 4 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    Preparing your assigned induction...
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Container>
+          )
+        }
+        if (assignmentToken && assignmentState.status === 'invalid') {
+          return renderAssignmentInvalidState()
+        }
+        return (
+          <LandingPage
+            onStartTraining={handleStartTraining}
+            onStartSafetyInduction={handleStartSafetyInduction}
+            forceLanguageSelectionOnly={Boolean(assignmentToken && assignmentState.status === 'ready')}
+            onAssignedLanguageSelected={() => setCurrentView('safetyInduction')}
+          />
+        )
       case 'safetyInduction':
-        return <SafetyInduction onBack={handleBackToLanding} />
+        return (
+          <SafetyInduction
+            onBack={() => {
+              handleBackToLanding()
+              if (assignmentToken) {
+                clearAssignmentFromUrl()
+              }
+            }}
+            onInductionStarted={() => trackAssignedEvent('started')}
+            onQuizSubmitted={(result) =>
+              trackAssignedEvent('quiz_submitted', {
+                quizScore: result?.score ?? null,
+                quizPassed: Boolean(result?.passed),
+              })
+            }
+          />
+        )
       case 'home':
         return renderHomeView()
       case 'video':

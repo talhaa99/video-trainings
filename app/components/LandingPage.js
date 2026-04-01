@@ -29,7 +29,12 @@ import {
 import AnimatedBackground from './AnimatedBackground'
 import { useLanguage } from '../contexts/LanguageContext'
 
-export default function LandingPage({ onStartTraining, onStartSafetyInduction }) {
+export default function LandingPage({
+  onStartTraining,
+  onStartSafetyInduction,
+  forceLanguageSelectionOnly = false,
+  onAssignedLanguageSelected,
+}) {
   const [isHovered, setIsHovered] = useState(false)
   const { language, changeLanguage, t } = useLanguage()
   // Always show language selection first on each visit
@@ -53,6 +58,10 @@ export default function LandingPage({ onStartTraining, onStartSafetyInduction })
   
   const handleLanguageSelect = (lang) => {
     changeLanguage(lang)
+    if (forceLanguageSelectionOnly && typeof onAssignedLanguageSelected === 'function') {
+      onAssignedLanguageSelected()
+      return
+    }
     setShowLanguageSelection(false)
   }
 

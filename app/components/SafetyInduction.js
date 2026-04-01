@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import confetti from 'canvas-confetti'
 import {
   Box,
@@ -122,7 +122,7 @@ const questions = [
   }
 ]
 
-export default function SafetyInduction({ onBack }) {
+export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubmitted }) {
   const { language, t } = useLanguage()
   const videoRef = useRef(null)
   const videoUrl = getSafetyInductionVideoUrl(language)
@@ -149,6 +149,17 @@ export default function SafetyInduction({ onBack }) {
   const [isMuted, setIsMuted] = useState(false)
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
+  const startedTrackedRef = useRef(false)
+
+  const trackStartedOnce = useCallback(() => {
+    if (startedTrackedRef.current) {
+      return
+    }
+    startedTrackedRef.current = true
+    if (typeof onInductionStarted === 'function') {
+      onInductionStarted()
+    }
+  }, [onInductionStarted])
 
   // Helper function to get question timings for current language
   const getQuestionTimings = (question) => {
@@ -294,6 +305,7 @@ export default function SafetyInduction({ onBack }) {
             console.log('handleLoadedMetadata: unmuted autoplay succeeded')
             setIsPlaying(true)
             setIsMuted(false)
+            trackStartedOnce()
             return
           } catch (unmutedErr) {
             console.warn('handleLoadedMetadata: unmuted autoplay rejected:', unmutedErr && (unmutedErr.name || unmutedErr.message) || unmutedErr)
@@ -304,6 +316,7 @@ export default function SafetyInduction({ onBack }) {
               console.log('handleLoadedMetadata: muted autoplay succeeded (fallback)')
               setIsPlaying(true)
               setIsMuted(true)
+              trackStartedOnce()
               return
             } catch (mutedErr) {
               console.error('handleLoadedMetadata: muted autoplay also failed:', mutedErr && (mutedErr.name || mutedErr.message) || mutedErr)
@@ -458,7 +471,7 @@ export default function SafetyInduction({ onBack }) {
         clearTimeout(pauseTimeoutRef.current)
       }
     }
-  }, [currentQuestion, answeredQuestions, isProcessingAnswer, isInAnswerSegment, segmentEndTime, wasCorrectAnswer, currentQuestionData])
+  }, [currentQuestion, answeredQuestions, isProcessingAnswer, isInAnswerSegment, segmentEndTime, wasCorrectAnswer, currentQuestionData, language, trackStartedOnce, videoUrl])
 
   const handleAnswer = (answer) => {
     if (!currentQuestion || isProcessingAnswer) return
@@ -518,6 +531,7 @@ export default function SafetyInduction({ onBack }) {
     } else {
       videoElement.play()
       setIsPlaying(true)
+      trackStartedOnce()
     }
   }
 
@@ -766,6 +780,9 @@ export default function SafetyInduction({ onBack }) {
     // Passing criteria: 4 out of 5 correct (80%) - 4 or more correct answers
     const passed = correctCount >= 4
     setQuizPassed(passed)
+    if (typeof onQuizSubmitted === 'function') {
+      onQuizSubmitted({ score: correctCount, total: selectedQuizQuestions.length, passed })
+    }
 
     // Show confetti if passed
     if (passed) {
