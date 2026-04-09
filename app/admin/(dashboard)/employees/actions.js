@@ -18,6 +18,7 @@ export async function createEmployeeAction(_prevState, formData) {
     const employee = await createEmployee({ name, email })
     revalidatePath('/admin/employees')
     revalidatePath('/admin/inductions')
+    revalidatePath('/admin/training')
 
     return {
       success: `Employee ${employee.employee_id} created successfully.`,
@@ -39,6 +40,7 @@ export async function updateEmployeeAction(_prevState, formData) {
     const employee = await updateEmployee({ id, name, email })
     revalidatePath('/admin/employees')
     revalidatePath('/admin/inductions')
+    revalidatePath('/admin/training')
     revalidatePath('/admin/training-records')
 
     return {
@@ -59,6 +61,7 @@ export async function deleteEmployeeAction(_prevState, formData) {
     const deleted = await deleteEmployee({ id })
     revalidatePath('/admin/employees')
     revalidatePath('/admin/inductions')
+    revalidatePath('/admin/training')
     revalidatePath('/admin/training-records')
 
     return {

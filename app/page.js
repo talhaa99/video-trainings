@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Box, 
   Container, 
@@ -32,7 +32,8 @@ export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [quizResults, setQuizResults] = useState([])
   const [currentQuizAnswers, setCurrentQuizAnswers] = useState({})
-  const [assignmentState, setAssignmentState] = useState({ status: 'idle', reason: null, token: null })
+  const [assignmentState, setAssignmentState] = useState({ status: 'idle', reason: null, token: null, trainingType: null })
+  const completionEventSentRef = useRef(false)
   
   // Get training data based on current language
   const trainingData = getTrainingData(language)
@@ -70,12 +71,24 @@ export default function Home() {
     setCurrentView('results')
   }
 
-  const handleNextVideo = () => {
+  const handleNextVideo = async () => {
     // Move to next video if available
     if (currentVideoIndex < trainingData.videos.length - 1) {
       setCurrentVideoIndex(prev => prev + 1)
       setCurrentView('video')
     } else {
+      if (assignmentToken && assignmentState.trainingType === 'general_training') {
+        const totalCorrect = quizResults.reduce((acc, item) => acc + (Number(item?.score) || 0), 0)
+        const totalQuestions = quizResults.reduce((acc, item) => acc + (Number(item?.totalQuestions) || 0), 0)
+        const summary = `Modules completed: ${quizResults.length}/${trainingData.videos.length}, Score: ${totalCorrect}/${totalQuestions}`
+        await trackAssignedEvent('completed', {
+          modulesCompleted: quizResults.length,
+          modulesTotal: trainingData.videos.length,
+          totalCorrect,
+          totalQuestions,
+          summary,
+        })
+      }
       // If no more videos, go back to home
       handleBackToHome()
     }
@@ -121,36 +134,67 @@ export default function Home() {
 
     async function resolveAssignment(token) {
       try {
-        setAssignmentState({ status: 'loading', reason: null, token })
+        setAssignmentState({ status: 'loading', reason: null, token, trainingType: null })
         const response = await fetch(`/api/assignments/resolve?token=${encodeURIComponent(token)}`)
         const data = await response.json()
 
         if (!isMounted) return
         if (!response.ok || !data?.valid) {
-          setAssignmentState({ status: 'invalid', reason: data?.reason || 'invalid', token })
+          setAssignmentState({ status: 'invalid', reason: data?.reason || 'invalid', token, trainingType: null })
           setCurrentView('landing')
           return
         }
 
-        setAssignmentState({ status: 'ready', reason: null, token })
+        setAssignmentState({
+          status: 'ready',
+          reason: null,
+          token,
+          trainingType: data?.trainingType || null,
+        })
         setCurrentView('landing')
       } catch (_error) {
         if (!isMounted) return
-        setAssignmentState({ status: 'invalid', reason: 'invalid', token })
+        setAssignmentState({ status: 'invalid', reason: 'invalid', token, trainingType: null })
         setCurrentView('landing')
       }
     }
 
     if (assignmentToken) {
       resolveAssignment(assignmentToken)
+      completionEventSentRef.current = false
     } else {
-      setAssignmentState({ status: 'idle', reason: null, token: null })
+      setAssignmentState({ status: 'idle', reason: null, token: null, trainingType: null })
+      completionEventSentRef.current = false
     }
 
     return () => {
       isMounted = false
     }
   }, [assignmentToken])
+
+  useEffect(() => {
+    const shouldSendCompletion =
+      Boolean(assignmentToken) &&
+      assignmentState.trainingType === 'general_training' &&
+      currentView === 'results' &&
+      quizResults.length >= trainingData.videos.length &&
+      !completionEventSentRef.current
+
+    if (!shouldSendCompletion) return
+
+    completionEventSentRef.current = true
+    const totalCorrect = quizResults.reduce((acc, item) => acc + (Number(item?.score) || 0), 0)
+    const totalQuestions = quizResults.reduce((acc, item) => acc + (Number(item?.totalQuestions) || 0), 0)
+    const summary = `Modules completed: ${quizResults.length}/${trainingData.videos.length}, Score: ${totalCorrect}/${totalQuestions}`
+
+    trackAssignedEvent('completed', {
+      modulesCompleted: quizResults.length,
+      modulesTotal: trainingData.videos.length,
+      totalCorrect,
+      totalQuestions,
+      summary,
+    })
+  }, [assignmentToken, assignmentState.trainingType, currentView, quizResults, trainingData.videos.length])
 
   const trackAssignedEvent = async (eventType, payload = {}) => {
     if (!assignmentToken) return
@@ -516,7 +560,14 @@ export default function Home() {
             onStartTraining={handleStartTraining}
             onStartSafetyInduction={handleStartSafetyInduction}
             forceLanguageSelectionOnly={Boolean(assignmentToken && assignmentState.status === 'ready')}
-            onAssignedLanguageSelected={() => setCurrentView('safetyInduction')}
+            onAssignedLanguageSelected={() => {
+              if (assignmentState.trainingType === 'general_training') {
+                trackAssignedEvent('started')
+                setCurrentView('home')
+                return
+              }
+              setCurrentView('safetyInduction')
+            }}
           />
         )
       case 'safetyInduction':
