@@ -15,7 +15,11 @@ export async function GET(request) {
       return NextResponse.json(result, { status: 404 })
     }
 
-    return NextResponse.json({ valid: true, assignmentId: result.assignment.id })
+    return NextResponse.json({
+      valid: true,
+      assignmentId: result.assignment.id,
+      trainingType: result.assignment.training_type,
+    })
   } catch (error) {
     return NextResponse.json(
       {

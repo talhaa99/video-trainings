@@ -28,8 +28,8 @@ const getTrainingData = (lang = 'en') => {
       ar: '/videos/Cpr-Arabic.mp4'
     },
     safetyInduction: {
-      en: '/safety-induction/en-new-video.mp4',
-      ar: '/safety-induction/video-ar.mp4'
+      en: '/safety-enduction/video-en.mp4',
+      ar: '/safety-enduction/video-ar.mp4'
     }
   }
 
@@ -220,5 +220,5 @@ export { getTrainingData }
 export const getSafetyInductionVideoUrl = (lang = 'en') => {
   const currentLang = lang === 'ar' ? 'ar' : 'en'
   const trainingData = getTrainingData(lang)
-  return trainingData.videoSources?.safetyInduction?.[currentLang] || buildAssetUrl('/safety-induction/video.mp4')
+  return trainingData.videoSources?.safetyInduction?.[currentLang] || buildAssetUrl('/safety-enduction/video-en.mp4')
 }

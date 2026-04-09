@@ -22,6 +22,7 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   PeopleAlt as PeopleAltIcon,
+  School as SchoolIcon,
   MenuBook as MenuBookIcon,
   WorkspacePremium as WorkspacePremiumIcon,
   Assessment as AssessmentIcon,
@@ -40,6 +41,7 @@ const radius = {
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: <DashboardIcon />, ready: true },
   { href: '/admin/employees', label: 'Employees', icon: <PeopleAltIcon />, ready: true },
+  { href: '/admin/training', label: 'Training', icon: <SchoolIcon />, ready: true },
   { href: '/admin/inductions', label: 'Inductions', icon: <MenuBookIcon />, ready: true },
   { href: '/admin/certificates', label: 'Certificates', icon: <WorkspacePremiumIcon />, ready: false },
   { href: '/admin/reports', label: 'Reports', icon: <AssessmentIcon />, ready: false },

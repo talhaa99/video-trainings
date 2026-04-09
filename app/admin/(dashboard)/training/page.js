@@ -1,15 +1,15 @@
 import { listAssignments, listEmployees } from '../../../../lib/admin/phase2a-service'
-import InductionsManager from './inductions-manager'
+import TrainingManager from './training-manager'
 
-export default async function InductionsPage() {
+export default async function TrainingPage() {
   const employees = await listEmployees()
   const allAssignments = await listAssignments({ limit: 200 })
-  const assignments = allAssignments.filter((assignment) => assignment.training_type === 'safety_induction')
+  const trainingAssignments = allAssignments.filter((assignment) => assignment.training_type === 'general_training')
   const appBaseUrl = (process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(
     /\/$/,
     ''
   )
-  const assignmentsWithLinks = assignments.map((assignment) => {
+  const assignmentsWithLinks = trainingAssignments.map((assignment) => {
     const isEmployee = assignment.recipient_type === 'employee'
     return {
       ...assignment,
@@ -19,5 +19,5 @@ export default async function InductionsPage() {
     }
   })
 
-  return <InductionsManager employees={employees} assignments={assignmentsWithLinks} />
+  return <TrainingManager employees={employees} assignments={assignmentsWithLinks} />
 }

@@ -2,21 +2,10 @@
 
 import Image from 'next/image'
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useEffect, useRef } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { loginAdmin } from './actions'
 
 const initialState = { error: null }
-
-async function loginAdminWithClientLog(prevState, formData) {
-  const email = `${formData.get('email') ?? ''}`.trim()
-  const domain = email.includes('@') ? email.slice(email.indexOf('@') + 1) : ''
-  console.info('[admin-login-client] sign-in attempt', {
-    emailDomain: domain || '(none)',
-    hasPassword: Boolean(formData.get('password')),
-  })
-  return loginAdmin(prevState, formData)
-}
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
     height: 50,
@@ -78,18 +67,7 @@ function LoginButton() {
 }
 
 export default function AdminLoginForm() {
-  const [state, formAction] = useFormState(loginAdminWithClientLog, initialState)
-  const prevErrorRef = useRef(null)
-
-  useEffect(() => {
-    if (state?.error && state.error !== prevErrorRef.current) {
-      prevErrorRef.current = state.error
-      console.info('[admin-login-client] server action returned', {
-        error: state.error,
-        hint: 'Check hosting logs for lines prefixed with [admin-auth].',
-      })
-    }
-  }, [state])
+  const [state, formAction] = useFormState(loginAdmin, initialState)
 
   return (
     <Paper
