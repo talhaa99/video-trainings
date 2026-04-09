@@ -25,7 +25,7 @@ import {
   Cancel
 } from '@mui/icons-material'
 import { useLanguage } from '../contexts/LanguageContext'
-import { getSafetyInductionVideoUrl } from '../../data/trainingData'
+import { getSafetyInductionVideoCandidates } from '../../data/trainingData'
 
 // Convert MM:SS or MM:SS.mmm to seconds (supports milliseconds)
 // Format examples: '3:34' or '3:34.500' (minutes:seconds.milliseconds)
@@ -125,7 +125,9 @@ const questions = [
 export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubmitted }) {
   const { language, t } = useLanguage()
   const videoRef = useRef(null)
-  const videoUrl = getSafetyInductionVideoUrl(language)
+  const videoCandidates = getSafetyInductionVideoCandidates(language)
+  const [videoCandidateIndex, setVideoCandidateIndex] = useState(0)
+  const videoUrl = videoCandidates[videoCandidateIndex] || ''
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -150,6 +152,10 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
   const startedTrackedRef = useRef(false)
+
+  useEffect(() => {
+    setVideoCandidateIndex(0)
+  }, [language])
 
   const trackStartedOnce = useCallback(() => {
     if (startedTrackedRef.current) {
@@ -1008,6 +1014,14 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
             playsInline
             controls={false}
             onContextMenu={(e) => e.preventDefault()}
+            onError={() => {
+              setVideoCandidateIndex((prev) => {
+                if (prev >= videoCandidates.length - 1) {
+                  return prev
+                }
+                return prev + 1
+              })
+            }}
           />
 
           {/* Question Overlay */}

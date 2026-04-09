@@ -222,3 +222,18 @@ export const getSafetyInductionVideoUrl = (lang = 'en') => {
   const trainingData = getTrainingData(lang)
   return trainingData.videoSources?.safetyInduction?.[currentLang] || buildAssetUrl('/safety-enduction/video-en.mp4')
 }
+
+export const getSafetyInductionVideoCandidates = (lang = 'en') => {
+  const currentLang = lang === 'ar' ? 'ar' : 'en'
+  const configuredPrimary = getSafetyInductionVideoUrl(currentLang)
+
+  const localCandidates =
+    currentLang === 'ar'
+      ? ['/safety-enduction/video-ar.mp4', '/safety-induction/video-ar.mp4']
+      : ['/safety-enduction/video-en.mp4', '/safety-induction/en-new-video.mp4', '/safety-induction/video-en.mp4']
+
+  const remoteCandidates = localCandidates.map((path) => buildAssetUrl(path))
+  const candidates = [configuredPrimary, ...remoteCandidates, ...localCandidates]
+
+  return [...new Set(candidates.filter(Boolean))]
+}
