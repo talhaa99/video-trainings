@@ -149,30 +149,12 @@ function EditEmployeeDialog({ employee, open, onClose, onSuccess }) {
           <input type="hidden" name="id" value={employee.id} />
           <Stack spacing={1.25}>
             <TextField
+              name="employeeId"
               label="Employee ID"
-              value={employee.employee_id}
+              required
+              defaultValue={employee.employee_id}
               fullWidth
-              InputProps={{
-                readOnly: true,
-              }}
-              helperText="System-generated employee identifier"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'rgba(148, 163, 184, 0.1)',
-                },
-                '& .MuiInputBase-input': {
-                  color: '#334155',
-                  WebkitTextFillColor: '#334155',
-                  fontWeight: 600,
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#64748b',
-                },
-                '& .MuiFormHelperText-root': {
-                  color: '#94a3b8',
-                  mt: 0.5,
-                },
-              }}
+              helperText="Employee ID must be unique."
             />
             <TextField name="name" label="Employee Name" required defaultValue={employee.name} fullWidth />
             <TextField

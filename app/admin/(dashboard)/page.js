@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material'
 import { getAdminDashboardStats } from '../../../lib/admin/phase2a-service'
 
@@ -16,11 +17,31 @@ export default async function AdminDashboardPage() {
       label: 'Employees',
       value: String(stats.employeeCount),
       hint: 'Total registered employees',
+      href: '/admin/employees',
     },
     {
       label: 'Safety Inductions',
       value: String(stats.inductionAssignmentCount),
       hint: 'Total assignments sent (all recipients)',
+      href: '/admin/inductions',
+    },
+    {
+      label: 'Training',
+      value: String(stats.trainingAssignmentCount),
+      hint: 'Total training assignments sent (all recipients)',
+      href: '/admin/training',
+    },
+    {
+      label: 'Reports',
+      value: String(stats.reportsCount),
+      hint: 'Total quiz reports submitted',
+      href: '/admin/reports',
+    },
+    {
+      label: 'Certificates',
+      value: String(stats.certificatesCount),
+      hint: 'Total passed certificates issued',
+      href: '/admin/certificates',
     },
   ]
 
@@ -42,35 +63,48 @@ export default async function AdminDashboardPage() {
             gap: { xs: 1.5, sm: 2, md: 2.5 },
             gridTemplateColumns: {
               xs: '1fr',
-              md: 'repeat(2, minmax(0, 1fr))',
+              sm: 'repeat(2, minmax(0, 1fr))',
+              lg: 'repeat(3, minmax(0, 1fr))',
+              xl: 'repeat(3, minmax(0, 1fr))',
             },
           }}
         >
           {summaryCards.map((card) => (
-            <Card
+            <Link
               key={card.label}
-              elevation={0}
-              sx={{
-                ...surfaceCardSx,
-                height: '100%',
-                minHeight: { xs: 142, md: 156 },
-                display: 'flex',
-              }}
+              href={card.href}
+              style={{ textDecoration: 'none', color: 'inherit' }}
             >
-              <CardContent sx={{ p: { xs: 2, md: 2.5 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                <Typography variant="body2" sx={{ color: '#64748b', mb: 1.2, fontWeight: 600 }}>
-                  {card.label}
-                </Typography>
-                <Typography variant="h3" sx={{ fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>
-                  {card.value}
-                </Typography>
-                <Box sx={{ mt: 'auto', pt: 1.4 }}>
-                  <Typography variant="body2" sx={{ color: '#94a3b8' }}>
-                    {card.hint}
+              <Card
+                elevation={0}
+                sx={{
+                  ...surfaceCardSx,
+                  height: '100%',
+                  minHeight: { xs: 142, md: 156 },
+                  display: 'flex',
+                  cursor: 'pointer',
+                  transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.1)',
+                  },
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2, md: 2.5 }, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  <Typography variant="body2" sx={{ color: '#64748b', mb: 1.2, fontWeight: 600 }}>
+                    {card.label}
                   </Typography>
-                </Box>
-              </CardContent>
-            </Card>
+                  <Typography variant="h3" sx={{ fontWeight: 800, color: '#1e293b', lineHeight: 1 }}>
+                    {card.value}
+                  </Typography>
+                  <Box sx={{ mt: 'auto', pt: 1.4 }}>
+                    <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+                      {card.hint}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </Box>
       </Stack>

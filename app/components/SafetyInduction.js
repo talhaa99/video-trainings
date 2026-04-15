@@ -9,7 +9,8 @@ import {
   Button,
   Card,
   CardContent,
-  LinearProgress
+  LinearProgress,
+  Stack
 } from '@mui/material'
 import {
   ArrowBack,
@@ -26,6 +27,7 @@ import {
 } from '@mui/icons-material'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getSafetyInductionVideoCandidates } from '../../data/trainingData'
+import CertificateModal from './CertificateModal'
 
 // Convert MM:SS or MM:SS.mmm to seconds (supports milliseconds)
 // Format examples: '3:34' or '3:34.500' (minutes:seconds.milliseconds)
@@ -122,7 +124,7 @@ const questions = [
   }
 ]
 
-export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubmitted }) {
+export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubmitted, recipientName = null }) {
   const { language, t } = useLanguage()
   const videoRef = useRef(null)
   const videoCandidates = getSafetyInductionVideoCandidates(language)
@@ -149,6 +151,7 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
   const [currentQuestionData, setCurrentQuestionData] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [certificateDownloadSignal, setCertificateDownloadSignal] = useState(0)
   const pauseTimeoutRef = useRef(null)
   const videoContainerRef = useRef(null)
   const startedTrackedRef = useRef(false)
@@ -823,6 +826,7 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
   }
 
   const handleRetakeQuiz = () => {
+    if (quizPassed) return
     selectRandomQuizQuestions()
   }
 
@@ -1456,19 +1460,41 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
                 >
                   {t('inductionQuizPassedMessage').replace('{score}', quizScore)}
                 </Typography>
-                <Button
-                  variant="contained"
-                  onClick={onBack}
-                  className="crystal-button crystal-button-primary"
-                  sx={{
-                    fontSize: '1rem',
-                    padding: '12px 24px',
-                    borderRadius: '12px',
-                    fontWeight: 700,
-                  }}
+                <Stack
+                  direction={{ xs: 'row', sm: 'row' }}
+                  spacing={1.2}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{ mt: 1.5 }}
                 >
-                  {t('safetyInductionBackToHome')}
-                </Button>
+                  <Button
+                    variant="contained"
+                    onClick={onBack}
+                    className="crystal-button crystal-button-primary"
+                    sx={{
+                      fontSize: '1rem',
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {t('safetyInductionBackToHome')}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      setCertificateDownloadSignal((prev) => prev + 1)
+                    }}
+                    sx={{
+                      fontSize: '1rem',
+                      padding: '12px 24px',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Download Certificate
+                  </Button>
+                </Stack>
               </>
             ) : (
               <>
@@ -1528,6 +1554,18 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
           </Card>
         </Box>
       )}
+      <CertificateModal
+        open={false}
+        onClose={() => {}}
+        directDownloadSignal={certificateDownloadSignal}
+        certificateData={{
+          recipientName,
+          moduleLabel: 'Safety Induction',
+          scoreText: `${quizScore}/5`,
+          completedAt: new Date().toISOString(),
+          attemptNumber: null,
+        }}
+      />
     </Container>
   )
 }

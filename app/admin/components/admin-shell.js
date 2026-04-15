@@ -43,8 +43,8 @@ const navItems = [
   { href: '/admin/employees', label: 'Employees', icon: <PeopleAltIcon />, ready: true },
   { href: '/admin/training', label: 'Training', icon: <SchoolIcon />, ready: true },
   { href: '/admin/inductions', label: 'Inductions', icon: <MenuBookIcon />, ready: true },
-  { href: '/admin/certificates', label: 'Certificates', icon: <WorkspacePremiumIcon />, ready: false },
-  { href: '/admin/reports', label: 'Reports', icon: <AssessmentIcon />, ready: false },
+  { href: '/admin/certificates', label: 'Certificates', icon: <WorkspacePremiumIcon />, ready: true },
+  { href: '/admin/reports', label: 'Reports', icon: <AssessmentIcon />, ready: true },
 ]
 
 function isNavItemSelected(pathname, href) {

@@ -33,13 +33,15 @@ import {
 import AnimatedBackground from './AnimatedBackground'
 import { getTrainingData } from '../../data/trainingData'
 import { useLanguage } from '../contexts/LanguageContext'
+import CertificateModal from './CertificateModal'
 // Removed canvas-confetti to avoid SSR issues - using CSS animations instead
 
-export default function ResultsScreen({ results, onNextVideo, onBackToHome }) {
+export default function ResultsScreen({ results, onNextVideo, onBackToHome, recipientName = null }) {
   const { language, t } = useLanguage()
   const trainingData = getTrainingData(language)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showAnswers, setShowAnswers] = useState(false)
+  const [certificateDownloadSignal, setCertificateDownloadSignal] = useState(0)
 
   // Get the most recent result (current video)
   const currentResult = results[results.length - 1]
@@ -93,6 +95,7 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome }) {
 
   const isLastVideo = currentResult && currentResult.videoIndex === 1 // 0-based index, so 1 means second video
   const allModulesCompleted = results.length >= trainingData.videos.length
+  const isPassed = scorePercentage >= 70
 
   return (
     <Box sx={{
@@ -657,6 +660,28 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome }) {
         >
           {t('showCorrectAnswers')}
         </Button>
+
+        {isPassed && (
+          <>
+            <Button
+              variant="outlined"
+              size="medium"
+              onClick={() => {
+                setCertificateDownloadSignal((prev) => prev + 1)
+              }}
+              className="crystal-button crystal-button-secondary"
+              sx={{
+                minWidth: 180,
+                fontSize: '1rem',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: 700,
+              }}
+            >
+              Download Certificate
+            </Button>
+          </>
+        )}
         
         {(!isLastVideo || !allModulesCompleted) && (
           <Button
@@ -948,6 +973,18 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome }) {
           </Card>
         </Box>
       )}
+      <CertificateModal
+        open={false}
+        onClose={() => {}}
+        directDownloadSignal={certificateDownloadSignal}
+        certificateData={{
+          recipientName,
+          moduleLabel: currentVideo?.title || 'Training Module',
+          scoreText: `${score}/${totalQuestions}`,
+          completedAt: new Date().toISOString(),
+          attemptNumber: currentResult ? currentResult.videoIndex + 1 : null,
+        }}
+      />
       </Container>
     </Box>
   )

@@ -32,7 +32,13 @@ export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [quizResults, setQuizResults] = useState([])
   const [currentQuizAnswers, setCurrentQuizAnswers] = useState({})
-  const [assignmentState, setAssignmentState] = useState({ status: 'idle', reason: null, token: null, trainingType: null })
+  const [assignmentState, setAssignmentState] = useState({
+    status: 'idle',
+    reason: null,
+    token: null,
+    trainingType: null,
+    recipientName: null,
+  })
   const completionEventSentRef = useRef(false)
   
   // Get training data based on current language
@@ -134,13 +140,13 @@ export default function Home() {
 
     async function resolveAssignment(token) {
       try {
-        setAssignmentState({ status: 'loading', reason: null, token, trainingType: null })
+        setAssignmentState({ status: 'loading', reason: null, token, trainingType: null, recipientName: null })
         const response = await fetch(`/api/assignments/resolve?token=${encodeURIComponent(token)}`)
         const data = await response.json()
 
         if (!isMounted) return
         if (!response.ok || !data?.valid) {
-          setAssignmentState({ status: 'invalid', reason: data?.reason || 'invalid', token, trainingType: null })
+          setAssignmentState({ status: 'invalid', reason: data?.reason || 'invalid', token, trainingType: null, recipientName: null })
           setCurrentView('landing')
           return
         }
@@ -150,11 +156,12 @@ export default function Home() {
           reason: null,
           token,
           trainingType: data?.trainingType || null,
+          recipientName: data?.recipientName || null,
         })
         setCurrentView('landing')
       } catch (_error) {
         if (!isMounted) return
-        setAssignmentState({ status: 'invalid', reason: 'invalid', token, trainingType: null })
+        setAssignmentState({ status: 'invalid', reason: 'invalid', token, trainingType: null, recipientName: null })
         setCurrentView('landing')
       }
     }
@@ -163,7 +170,7 @@ export default function Home() {
       resolveAssignment(assignmentToken)
       completionEventSentRef.current = false
     } else {
-      setAssignmentState({ status: 'idle', reason: null, token: null, trainingType: null })
+      setAssignmentState({ status: 'idle', reason: null, token: null, trainingType: null, recipientName: null })
       completionEventSentRef.current = false
     }
 
@@ -545,7 +552,7 @@ export default function Home() {
               <Card sx={{ borderRadius: 3, border: '1px solid rgba(148, 163, 184, 0.3)' }}>
                 <CardContent sx={{ p: 4 }}>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                    Preparing your assigned induction...
+                    Preparing your assigned training...
                   </Typography>
                 </CardContent>
               </Card>
@@ -573,6 +580,7 @@ export default function Home() {
       case 'safetyInduction':
         return (
           <SafetyInduction
+            recipientName={assignmentState.recipientName}
             onBack={() => {
               handleBackToLanding()
               if (assignmentToken) {
@@ -610,6 +618,7 @@ export default function Home() {
         return (
           <ResultsScreen
             results={quizResults}
+            recipientName={assignmentState.recipientName}
             onNextVideo={handleNextVideo}
             onBackToHome={handleBackToHome}
           />

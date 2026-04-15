@@ -1,10 +1,12 @@
-import PlaceholderSection from '../../components/placeholder-section'
+import { listAssignments } from '../../../../lib/admin/phase2a-service'
+import CertificatesManager from './certificates-manager'
 
-export default function CertificatesPlaceholderPage() {
-  return (
-    <PlaceholderSection
-      title="Certificates"
-      description="Certificate generation and distribution are deliberately excluded from Phase 1 and will be introduced in a dedicated implementation phase."
-    />
+export default async function CertificatesPage() {
+  const allAssignments = await listAssignments({ limit: 500 })
+  const certificateEligibleAssignments = allAssignments.filter(
+    (assignment) =>
+      assignment.training_type === 'safety_induction' || assignment.training_type === 'general_training'
   )
+
+  return <CertificatesManager assignments={certificateEligibleAssignments} />
 }
