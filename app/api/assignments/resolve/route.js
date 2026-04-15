@@ -19,6 +19,7 @@ export async function GET(request) {
       valid: true,
       assignmentId: result.assignment.id,
       trainingType: result.assignment.training_type,
+      recipientName: result.assignment.employee_name || result.assignment.external_name || null,
     })
   } catch (error) {
     return NextResponse.json(

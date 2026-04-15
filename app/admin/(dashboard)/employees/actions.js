@@ -5,6 +5,9 @@ import { createEmployee, deleteEmployee, updateEmployee } from '../../../../lib/
 
 function formatDbError(error, fallbackMessage) {
   const message = error?.message || fallbackMessage
+  if (message.includes('duplicate key value') && message.includes('employees_employee_id_key')) {
+    return 'This employee ID is already used by another employee.'
+  }
   if (message.includes('duplicate key value') && message.includes('employees_email_key')) {
     return 'This email is already used by another employee.'
   }
@@ -35,9 +38,10 @@ export async function createEmployeeAction(_prevState, formData) {
 export async function updateEmployeeAction(_prevState, formData) {
   try {
     const id = `${formData.get('id') ?? ''}`
+    const employeeId = `${formData.get('employeeId') ?? ''}`
     const name = `${formData.get('name') ?? ''}`
     const email = `${formData.get('email') ?? ''}`
-    const employee = await updateEmployee({ id, name, email })
+    const employee = await updateEmployee({ id, employeeId, name, email })
     revalidatePath('/admin/employees')
     revalidatePath('/admin/inductions')
     revalidatePath('/admin/training')

@@ -31,6 +31,18 @@ export default async function AdminDashboardPage() {
       hint: 'Total training assignments sent (all recipients)',
       href: '/admin/training',
     },
+    {
+      label: 'Reports',
+      value: String(stats.reportsCount),
+      hint: 'Total quiz reports submitted',
+      href: '/admin/reports',
+    },
+    {
+      label: 'Certificates',
+      value: String(stats.certificatesCount),
+      hint: 'Total passed certificates issued',
+      href: '/admin/certificates',
+    },
   ]
 
   return (
@@ -53,6 +65,7 @@ export default async function AdminDashboardPage() {
               xs: '1fr',
               sm: 'repeat(2, minmax(0, 1fr))',
               lg: 'repeat(3, minmax(0, 1fr))',
+              xl: 'repeat(3, minmax(0, 1fr))',
             },
           }}
         >
