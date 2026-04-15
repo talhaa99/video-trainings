@@ -41,8 +41,7 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome, reci
   const trainingData = getTrainingData(language)
   const [showConfetti, setShowConfetti] = useState(false)
   const [showAnswers, setShowAnswers] = useState(false)
-  const [certificateOpen, setCertificateOpen] = useState(false)
-  const [certificateAutoDownload, setCertificateAutoDownload] = useState(false)
+  const [certificateDownloadSignal, setCertificateDownloadSignal] = useState(0)
 
   // Get the most recent result (current video)
   const currentResult = results[results.length - 1]
@@ -668,8 +667,7 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome, reci
               variant="outlined"
               size="medium"
               onClick={() => {
-                setCertificateAutoDownload(true)
-                setCertificateOpen(true)
+                setCertificateDownloadSignal((prev) => prev + 1)
               }}
               className="crystal-button crystal-button-secondary"
               sx={{
@@ -976,13 +974,9 @@ export default function ResultsScreen({ results, onNextVideo, onBackToHome, reci
         </Box>
       )}
       <CertificateModal
-        open={certificateOpen}
-        onClose={() => {
-          setCertificateOpen(false)
-          setCertificateAutoDownload(false)
-        }}
-        autoDownload={certificateAutoDownload}
-        onAutoDownloadComplete={() => setCertificateAutoDownload(false)}
+        open={false}
+        onClose={() => {}}
+        directDownloadSignal={certificateDownloadSignal}
         certificateData={{
           recipientName,
           moduleLabel: currentVideo?.title || 'Training Module',

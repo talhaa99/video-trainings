@@ -552,7 +552,7 @@ export default function Home() {
               <Card sx={{ borderRadius: 3, border: '1px solid rgba(148, 163, 184, 0.3)' }}>
                 <CardContent sx={{ p: 4 }}>
                   <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                    Preparing your assigned induction...
+                    Preparing your assigned training...
                   </Typography>
                 </CardContent>
               </Card>
