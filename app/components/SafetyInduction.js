@@ -823,6 +823,7 @@ export default function SafetyInduction({ onBack, onInductionStarted, onQuizSubm
   }
 
   const handleRetakeQuiz = () => {
+    if (quizPassed) return
     selectRandomQuizQuestions()
   }
 
