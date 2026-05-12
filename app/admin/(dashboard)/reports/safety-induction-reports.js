@@ -18,6 +18,14 @@ import {
   IconButton,
 } from '@mui/material'
 import { ContentCopy as ContentCopyIcon, Assessment as AssessmentIcon } from '@mui/icons-material'
+import {
+  TrainingModuleFilter,
+  generalTrainingFilterKindFromAttempt,
+  matchesTrainingModuleFilter,
+  titleGeneralTrainingFromAttempt,
+  titleGeneralTrainingProgram,
+  titleSafetyInduction,
+} from '../../../../lib/admin/training-module-display'
 
 const cardSx = {
   borderRadius: 2.5,
@@ -25,9 +33,6 @@ const cardSx = {
   background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
   boxShadow: '0 14px 34px rgba(15, 23, 42, 0.06)',
 }
-
-const SAFETY_INDUCTION_TITLE = 'Safety Induction'
-const TRAINING_MODULE_TITLE = 'Training Module'
 
 function formatTimestamp(dateValue) {
   if (!dateValue) return '—'
@@ -56,8 +61,6 @@ function buildReportRows(assignments) {
   const rows = []
   for (const a of assignments) {
     const trainingType = a.training_type
-    const moduleTitle =
-      trainingType === 'general_training' ? TRAINING_MODULE_TITLE : SAFETY_INDUCTION_TITLE
     const isEmployee = a.recipient_type === 'employee'
     const name = isEmployee ? a.employee_name : a.external_name
     const email = isEmployee ? a.employee_email : a.external_email
@@ -67,6 +70,12 @@ function buildReportRows(assignments) {
     for (const att of attempts) {
       const passed = att?.quizPassed === true
       const failed = att?.quizPassed === false
+      const trainingTitle =
+        trainingType === 'safety_induction' ? titleSafetyInduction() : titleGeneralTrainingFromAttempt(att)
+      const moduleFilterKind =
+        trainingType === 'safety_induction'
+          ? TrainingModuleFilter.SAFETY_INDUCTION
+          : generalTrainingFilterKindFromAttempt(att)
       rows.push({
         key: `${a.id}-att-${att?.attemptNumber ?? ''}-${att?.submittedAt ?? ''}`,
         kind: 'attempt',
@@ -80,8 +89,9 @@ function buildReportRows(assignments) {
         quizScore: att?.quizScore,
         outcome: passed ? 'passed' : failed ? 'failed' : 'submitted',
         outcomeLabel: passed ? 'Passed' : failed ? 'Failed' : 'Submitted',
-        trainingTitle: moduleTitle,
+        trainingTitle,
         trainingType,
+        moduleFilterKind,
         assignmentStatus: a.status,
         openedAt: a.opened_at,
         startedAt: a.started_at,
@@ -93,6 +103,12 @@ function buildReportRows(assignments) {
     const hasProgress = Boolean(a.opened_at || a.started_at)
     if (hasProgress && attempts.length === 0) {
       const sortDate = a.opened_at || a.started_at || a.created_at
+      const trainingTitle =
+        trainingType === 'safety_induction' ? titleSafetyInduction() : titleGeneralTrainingProgram()
+      const moduleFilterKind =
+        trainingType === 'safety_induction'
+          ? TrainingModuleFilter.SAFETY_INDUCTION
+          : TrainingModuleFilter.PROGRAM
       rows.push({
         key: `${a.id}-opened`,
         kind: 'opened',
@@ -106,8 +122,9 @@ function buildReportRows(assignments) {
         quizScore: null,
         outcome: 'opened',
         outcomeLabel: 'Opened',
-        trainingTitle: moduleTitle,
+        trainingTitle,
         trainingType,
+        moduleFilterKind,
         assignmentStatus: a.status,
         openedAt: a.opened_at,
         startedAt: a.started_at,
@@ -260,7 +277,7 @@ function ReportCard({ row, copiedId, onCopy }) {
 export default function SafetyInductionReports({ assignments }) {
   const [outcomeFilter, setOutcomeFilter] = useState('all')
   const [userTypeFilter, setUserTypeFilter] = useState('all')
-  const [moduleTypeFilter, setModuleTypeFilter] = useState('all')
+  const [moduleTypeFilter, setModuleTypeFilter] = useState(TrainingModuleFilter.ALL)
   const [sortOrder, setSortOrder] = useState('newest')
   const [search, setSearch] = useState('')
   const [copiedId, setCopiedId] = useState(null)
@@ -281,8 +298,8 @@ export default function SafetyInductionReports({ assignments }) {
       list = list.filter((r) => r.recipientType !== 'employee')
     }
 
-    if (moduleTypeFilter !== 'all') {
-      list = list.filter((r) => r.trainingType === moduleTypeFilter)
+    if (moduleTypeFilter !== TrainingModuleFilter.ALL) {
+      list = list.filter((r) => matchesTrainingModuleFilter(r, moduleTypeFilter))
     }
 
     if (q) {
@@ -290,7 +307,8 @@ export default function SafetyInductionReports({ assignments }) {
         const n = `${r.name}`.toLowerCase()
         const e = `${r.email}`.toLowerCase()
         const employeeId = `${r.employeeCode ?? ''}`.toLowerCase()
-        return n.includes(q) || e.includes(q) || employeeId.includes(q)
+        const title = `${r.trainingTitle ?? ''}`.toLowerCase()
+        return n.includes(q) || e.includes(q) || employeeId.includes(q) || title.includes(q)
       })
     }
 
@@ -339,7 +357,7 @@ export default function SafetyInductionReports({ assignments }) {
             </Box>
           </Stack>
           <Typography sx={{ color: '#64748b', mt: 0.75, width: '100%', lineHeight: 1.6 }}>
-            Quiz attempt history and open progress for Safety Induction and Training Module assignments. Each card is one
+            Quiz attempt history and open progress for Safety Induction, Firefighter training, and CPR training. Each card is one
             submission or one in-progress recipient who has not yet submitted a quiz (where applicable).
           </Typography>
         </Box>
@@ -382,18 +400,19 @@ export default function SafetyInductionReports({ assignments }) {
                 <MenuItem value="non-employee">Non-Employee</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
-              <InputLabel id="reports-module-type-label">Module type</InputLabel>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+              <InputLabel id="reports-module-type-label">Training</InputLabel>
               <Select
                 labelId="reports-module-type-label"
-                label="Module type"
+                label="Training"
                 value={moduleTypeFilter}
                 onChange={(e) => setModuleTypeFilter(e.target.value)}
                 sx={{ borderRadius: 1.75 }}
               >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="safety_induction">Safety Induction</MenuItem>
-                <MenuItem value="general_training">Training Module</MenuItem>
+                <MenuItem value={TrainingModuleFilter.ALL}>All</MenuItem>
+                <MenuItem value={TrainingModuleFilter.SAFETY_INDUCTION}>Safety Induction</MenuItem>
+                <MenuItem value={TrainingModuleFilter.FIRE}>Firefighter training</MenuItem>
+                <MenuItem value={TrainingModuleFilter.CPR}>CPR training</MenuItem>
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
@@ -431,14 +450,14 @@ export default function SafetyInductionReports({ assignments }) {
               Try clearing the search or setting Outcome to &quot;All&quot;. Opened-only rows appear when a recipient has opened or
               started the induction but has no quiz attempts logged yet.
             </Typography>
-            {outcomeFilter !== 'all' || userTypeFilter !== 'all' || moduleTypeFilter !== 'all' || search.trim() ? (
+            {outcomeFilter !== 'all' || userTypeFilter !== 'all' || moduleTypeFilter !== TrainingModuleFilter.ALL || search.trim() ? (
               <Button
                 variant="outlined"
                 sx={{ mt: 2, borderRadius: 1.75, fontWeight: 700 }}
                 onClick={() => {
                   setOutcomeFilter('all')
                   setUserTypeFilter('all')
-                  setModuleTypeFilter('all')
+                  setModuleTypeFilter(TrainingModuleFilter.ALL)
                   setSearch('')
                 }}
               >
