@@ -17,6 +17,15 @@ import {
 } from '@mui/material'
 import { WorkspacePremium as WorkspacePremiumIcon, Download as DownloadIcon } from '@mui/icons-material'
 import CertificateModal from '../../../components/CertificateModal'
+import {
+  TrainingModuleFilter,
+  generalTrainingFilterKindFromAttempt,
+  matchesTrainingModuleFilter,
+  titleGeneralTrainingFromAttempt,
+  titleGeneralTrainingModule,
+  titleGeneralTrainingProgram,
+  titleSafetyInduction,
+} from '../../../../lib/admin/training-module-display'
 
 const cardSx = {
   borderRadius: 2.5,
@@ -48,10 +57,6 @@ function normalizeAttempts(attemptsValue) {
   }
 }
 
-function toModuleLabel(trainingType) {
-  return trainingType === 'general_training' ? 'Training Module' : 'Safety Induction'
-}
-
 function toScoreText(trainingType, scoreValue) {
   if (scoreValue == null) return '—'
   if (trainingType === 'safety_induction') return `${scoreValue}/5`
@@ -67,9 +72,95 @@ function buildCertificateRows(assignments) {
     const name = isEmployee ? assignment.employee_name : assignment.external_name
     const email = isEmployee ? assignment.employee_email : assignment.external_email
     const employeeCode = isEmployee ? assignment.employee_code : null
-    const moduleLabel = toModuleLabel(assignment.training_type)
 
-    const passedAttempts = attempts.filter((attempt) => attempt?.quizPassed === true)
+    if (assignment.training_type === 'general_training') {
+      const modulePassed = attempts.filter(
+        (a) =>
+          a?.quizPassed === true &&
+          a?.source === 'module_quiz' &&
+          (Number(a?.moduleIndex) === 0 || Number(a?.moduleIndex) === 1),
+      )
+      const firstPassByModule = new Map()
+      for (const a of modulePassed) {
+        const mi = Number(a.moduleIndex)
+        if (!firstPassByModule.has(mi)) firstPassByModule.set(mi, a)
+      }
+      const moduleOrder = [...firstPassByModule.keys()].sort((x, y) => x - y)
+      for (const mi of moduleOrder) {
+        const attempt = firstPassByModule.get(mi)
+        rows.push({
+          key: `${assignment.id}-module-${mi}-${attempt?.submittedAt ?? ''}`,
+          assignmentId: assignment.id,
+          name: name || '—',
+          email: email || '—',
+          moduleType: assignment.training_type,
+          moduleFilterKind: mi === 0 ? TrainingModuleFilter.FIRE : TrainingModuleFilter.CPR,
+          moduleLabel: titleGeneralTrainingModule(mi),
+          completionDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
+          sortDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
+          scoreValue: attempt?.quizScore ?? null,
+          scoreText: toScoreText(assignment.training_type, attempt?.quizScore ?? null),
+          attemptNumber: attempt?.attemptNumber ?? assignment.latest_attempt_number ?? null,
+          recipientType: assignment.recipient_type,
+          employeeCode,
+          statusLabel: 'Certificate Issued',
+          recipientNameForCertificate: name || 'Participant',
+        })
+      }
+
+      const bothModulesDocumented = firstPassByModule.has(0) && firstPassByModule.has(1)
+      const nonModulePassed = attempts.filter((a) => a?.quizPassed === true && a?.source !== 'module_quiz')
+      for (const attempt of nonModulePassed) {
+        if (bothModulesDocumented && attempt?.source === 'training_completed') continue
+        rows.push({
+          key: `${assignment.id}-attempt-${attempt?.attemptNumber ?? 1}-${attempt?.submittedAt ?? ''}`,
+          assignmentId: assignment.id,
+          name: name || '—',
+          email: email || '—',
+          moduleType: assignment.training_type,
+          moduleFilterKind: generalTrainingFilterKindFromAttempt(attempt),
+          moduleLabel: titleGeneralTrainingFromAttempt(attempt),
+          completionDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
+          sortDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
+          scoreValue: attempt?.quizScore ?? assignment.quiz_score ?? null,
+          scoreText: toScoreText(assignment.training_type, attempt?.quizScore ?? assignment.quiz_score ?? null),
+          attemptNumber: attempt?.attemptNumber ?? assignment.latest_attempt_number ?? null,
+          recipientType: assignment.recipient_type,
+          employeeCode,
+          statusLabel: 'Certificate Issued',
+          recipientNameForCertificate: name || 'Participant',
+        })
+      }
+
+      if (moduleOrder.length === 0 && nonModulePassed.length === 0) {
+        if (assignment.quiz_passed === true && assignment.quiz_submitted_at) {
+          rows.push({
+            key: `${assignment.id}-fallback`,
+            assignmentId: assignment.id,
+            name: name || '—',
+            email: email || '—',
+            moduleType: assignment.training_type,
+            moduleFilterKind: TrainingModuleFilter.PROGRAM,
+            moduleLabel: titleGeneralTrainingProgram(),
+            completionDate: assignment.quiz_submitted_at || assignment.completed_at,
+            sortDate: assignment.quiz_submitted_at || assignment.completed_at,
+            scoreValue: assignment.quiz_score ?? null,
+            scoreText: toScoreText(assignment.training_type, assignment.quiz_score ?? null),
+            attemptNumber: assignment.latest_attempt_number ?? 1,
+            recipientType: assignment.recipient_type,
+            employeeCode,
+            statusLabel: 'Certificate Issued',
+            recipientNameForCertificate: name || 'Participant',
+          })
+        }
+      }
+      continue
+    }
+
+    const moduleLabel = titleSafetyInduction()
+    const passedAttempts = attempts.filter(
+      (attempt) => attempt?.quizPassed === true && attempt?.source !== 'module_quiz',
+    )
 
     if (passedAttempts.length > 0) {
       for (const attempt of passedAttempts) {
@@ -79,6 +170,7 @@ function buildCertificateRows(assignments) {
           name: name || '—',
           email: email || '—',
           moduleType: assignment.training_type,
+          moduleFilterKind: TrainingModuleFilter.SAFETY_INDUCTION,
           moduleLabel,
           completionDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
           sortDate: attempt?.submittedAt || assignment.completed_at || assignment.quiz_submitted_at || null,
@@ -101,6 +193,7 @@ function buildCertificateRows(assignments) {
         name: name || '—',
         email: email || '—',
         moduleType: assignment.training_type,
+        moduleFilterKind: TrainingModuleFilter.SAFETY_INDUCTION,
         moduleLabel,
         completionDate: assignment.quiz_submitted_at || assignment.completed_at,
         sortDate: assignment.quiz_submitted_at || assignment.completed_at,
@@ -147,9 +240,9 @@ function CertificateCard({ row, onDownload }) {
         <Stack spacing={0.9} sx={{ mt: 1.6, flexGrow: 1 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-              Module
+              Training
             </Typography>
-            <Typography variant="body2" sx={{ color: '#334155', fontWeight: 700 }}>
+            <Typography variant="body2" sx={{ color: '#334155', fontWeight: 700, textAlign: 'right', maxWidth: '58%' }}>
               {row.moduleLabel}
             </Typography>
           </Stack>
@@ -220,7 +313,7 @@ function CertificateCard({ row, onDownload }) {
 }
 
 export default function CertificatesManager({ assignments }) {
-  const [moduleTypeFilter, setModuleTypeFilter] = useState('all')
+  const [moduleTypeFilter, setModuleTypeFilter] = useState(TrainingModuleFilter.ALL)
   const [userTypeFilter, setUserTypeFilter] = useState('all')
   const [sortOrder, setSortOrder] = useState('newest')
   const [search, setSearch] = useState('')
@@ -233,8 +326,8 @@ export default function CertificatesManager({ assignments }) {
     let rows = allRows
     const q = search.trim().toLowerCase()
 
-    if (moduleTypeFilter !== 'all') {
-      rows = rows.filter((row) => row.moduleType === moduleTypeFilter)
+    if (moduleTypeFilter !== TrainingModuleFilter.ALL) {
+      rows = rows.filter((row) => matchesTrainingModuleFilter(row, moduleTypeFilter))
     }
 
     if (userTypeFilter === 'employee') {
@@ -247,7 +340,8 @@ export default function CertificatesManager({ assignments }) {
       rows = rows.filter((row) => {
         const n = `${row.name}`.toLowerCase()
         const e = `${row.email}`.toLowerCase()
-        return n.includes(q) || e.includes(q)
+        const ml = `${row.moduleLabel ?? ''}`.toLowerCase()
+        return n.includes(q) || e.includes(q) || ml.includes(q)
       })
     }
 
@@ -295,7 +389,7 @@ export default function CertificatesManager({ assignments }) {
             </Typography>
           </Stack>
           <Typography sx={{ color: '#64748b', mt: 0.75, lineHeight: 1.6 }}>
-            View and download issued certificates for users who passed Safety Induction or Training Module assessments.
+            View and download issued certificates for users who passed Safety Induction, Firefighter training, or CPR training assessments.
           </Typography>
         </Box>
       </Stack>
@@ -303,18 +397,19 @@ export default function CertificatesManager({ assignments }) {
       <Card elevation={0} sx={cardSx}>
         <CardContent sx={{ p: { xs: 2, md: 2.25 } }}>
           <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems={{ xs: 'stretch', lg: 'flex-end' }} flexWrap="wrap">
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
-              <InputLabel id="cert-module-type-label">Module Type</InputLabel>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+              <InputLabel id="cert-module-type-label">Training</InputLabel>
               <Select
                 labelId="cert-module-type-label"
-                label="Module Type"
+                label="Training"
                 value={moduleTypeFilter}
                 onChange={(event) => setModuleTypeFilter(event.target.value)}
                 sx={{ borderRadius: 1.75 }}
               >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="safety_induction">Safety Induction</MenuItem>
-                <MenuItem value="general_training">Training Module</MenuItem>
+                <MenuItem value={TrainingModuleFilter.ALL}>All</MenuItem>
+                <MenuItem value={TrainingModuleFilter.SAFETY_INDUCTION}>Safety Induction</MenuItem>
+                <MenuItem value={TrainingModuleFilter.FIRE}>Firefighter training</MenuItem>
+                <MenuItem value={TrainingModuleFilter.CPR}>CPR training</MenuItem>
               </Select>
             </FormControl>
 

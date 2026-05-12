@@ -86,7 +86,7 @@ function CertificateBody({ certificateRef, safeData }) {
         <Stack direction="row" justifyContent="space-between" alignItems="flex-end" spacing={2.2}>
           <Box sx={{ border: '1px solid rgba(148, 163, 184, 0.35)', borderRadius: 1.2, backgroundColor: 'rgba(255, 255, 255, 0.78)', px: { xs: 1.1, md: 1.6 }, py: { xs: 0.75, md: 0.95 }, minWidth: { xs: 230, md: 320 } }}>
             <Stack spacing={0.3}>
-              <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.73rem', md: '0.8rem' } }}><strong style={{ color: '#334155' }}>Module:</strong> {safeData.moduleLabel}</Typography>
+              <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.73rem', md: '0.8rem' } }}><strong style={{ color: '#334155' }}>Training:</strong> {safeData.moduleLabel}</Typography>
               <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.73rem', md: '0.8rem' } }}><strong style={{ color: '#334155' }}>Score:</strong> {safeData.scoreText}</Typography>
               <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.73rem', md: '0.8rem' } }}><strong style={{ color: '#334155' }}>Completion Date:</strong> {formatDate(safeData.completedAt)}</Typography>
               {safeData.attemptNumber != null ? (

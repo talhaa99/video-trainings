@@ -45,7 +45,7 @@ export default function QuizComponent({ quiz, onComplete, onBack }) {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setIsTimerActive(false)
-          handleNextQuestion()
+          void handleNextQuestion()
           return 30
         }
         return prev - 1
@@ -63,7 +63,7 @@ export default function QuizComponent({ quiz, onComplete, onBack }) {
     setSelectedAnswer(event.target.value)
   }
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     const newAnswers = {
       ...answers,
       [currentQuestionIndex]: selectedAnswer
@@ -71,7 +71,7 @@ export default function QuizComponent({ quiz, onComplete, onBack }) {
     setAnswers(newAnswers)
 
     if (isLastQuestion) {
-      calculateScore(newAnswers)
+      await calculateScore(newAnswers)
     } else {
       setCurrentQuestionIndex(prev => prev + 1)
       setSelectedAnswer('')
@@ -88,7 +88,7 @@ export default function QuizComponent({ quiz, onComplete, onBack }) {
     }
   }
 
-  const calculateScore = (finalAnswers) => {
+  const calculateScore = async (finalAnswers) => {
     let score = 0
     const results = quiz.questions.map((question, index) => {
       const userAnswer = finalAnswers[index] // Keep as alphabetic label (A, B, C, D)
@@ -106,7 +106,7 @@ export default function QuizComponent({ quiz, onComplete, onBack }) {
       }
     })
 
-    onComplete(finalAnswers, score)
+    await onComplete(finalAnswers, score)
   }
 
   const getTimerColor = () => {
