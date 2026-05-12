@@ -5,6 +5,9 @@ import { Box, Stack, Typography } from '@mui/material'
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 const COLORS = {
+  pass: '#0d9488',
+  failSubmit: '#f59e0b',
+  notSubmitted: '#94a3b8',
   completed: '#0d9488',
   pending: '#94a3b8',
 }
@@ -25,18 +28,43 @@ function DashboardDoughnutComponent({
   openPillLabel = 'Open',
   doneCountPillLabel,
 }) {
-  const { total, completed, pending } = bucket || { total: 0, completed: 0, pending: 0 }
+  const isModuleTriplet = bucket?.kind === 'moduleTriplet'
+  const triplet = isModuleTriplet ? bucket : null
+  const legacy = !isModuleTriplet && bucket ? bucket : { total: 0, completed: 0, pending: 0 }
+  const { total, completed, pending } = legacy
   const donePillLabel = doneCountPillLabel ?? completedLegendLabel
 
-  const data = useMemo(
-    () => [
+  const displayTotal = isModuleTriplet ? triplet.total : total
+
+  const data = useMemo(() => {
+    if (triplet) {
+      const { passed, failedSubmit, notSubmitted, total: t } = triplet
+      const rows = [
+        { name: 'Passed', value: passed, fill: COLORS.pass },
+        { name: 'Submitted, not passed', value: failedSubmit, fill: COLORS.failSubmit },
+        { name: 'Not submitted', value: notSubmitted, fill: COLORS.notSubmitted },
+      ].filter((r) => r.value > 0)
+      if (rows.length > 0) return rows
+      if (t > 0) return [{ name: 'Not submitted', value: t, fill: COLORS.notSubmitted }]
+      return []
+    }
+    return [
       { name: completedLegendLabel, value: completed, fill: COLORS.completed },
       { name: pendingLegendLabel, value: pending, fill: COLORS.pending },
-    ],
-    [completed, pending, completedLegendLabel, pendingLegendLabel],
-  )
+    ]
+  }, [
+    triplet,
+    isModuleTriplet,
+    completed,
+    pending,
+    completedLegendLabel,
+    pendingLegendLabel,
+  ])
 
   const completionRate = pct(completed, total)
+  const submissionRate = triplet ? pct(triplet.submitted, triplet.total) : null
+  const passAmongSubmitted =
+    triplet && triplet.submitted > 0 ? pct(triplet.passed, triplet.submitted) : null
 
   return (
     <Stack spacing={1.25} sx={{ height: '100%' }}>
@@ -49,7 +77,7 @@ function DashboardDoughnutComponent({
         ) : null}
       </Box>
       <Box sx={{ width: '100%', height: { xs: 240, sm: 260 }, minHeight: 220, position: 'relative' }}>
-        {total === 0 ? (
+        {displayTotal === 0 ? (
           <Box
             sx={{
               height: '100%',
@@ -80,11 +108,11 @@ function DashboardDoughnutComponent({
                   paddingAngle={2}
                   stroke="#fff"
                   strokeWidth={2}
-                  isAnimationActive={total < 500}
+                  isAnimationActive={displayTotal < 500}
                   label={false}
                 >
-                  {data.map((entry) => (
-                    <Cell key={entry.name} fill={entry.fill} />
+                  {data.map((entry, idx) => (
+                    <Cell key={`${entry.name}-${idx}`} fill={entry.fill} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -97,7 +125,7 @@ function DashboardDoughnutComponent({
                 />
                 <Legend
                   verticalAlign="bottom"
-                  height={32}
+                  height={isModuleTriplet ? 52 : 32}
                   formatter={(value, entry) => (
                     <span style={{ color: '#475569', fontSize: 12, fontWeight: 600 }}>
                       {value}: {entry.payload?.value ?? ''}
@@ -119,7 +147,7 @@ function DashboardDoughnutComponent({
               }}
             >
               <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: { xs: '1.35rem', sm: '1.5rem' }, lineHeight: 1.1 }}>
-                {total}
+                {displayTotal}
               </Typography>
               <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, mt: 0.25 }}>
                 Total
@@ -128,11 +156,21 @@ function DashboardDoughnutComponent({
           </>
         )}
       </Box>
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.5 }}>
-        <StatPill label={ratePillLabel} value={`${completionRate}%`} />
-        <StatPill label={openPillLabel} value={String(pending)} />
-        <StatPill label={donePillLabel} value={String(completed)} />
-      </Stack>
+      {displayTotal === 0 ? null : isModuleTriplet ? (
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.5 }}>
+          <StatPill label="Submission rate" value={`${submissionRate ?? 0}%`} />
+          <StatPill
+            label="Pass rate (of submitted)"
+            value={passAmongSubmitted == null ? '—' : `${passAmongSubmitted}%`}
+          />
+        </Stack>
+      ) : (
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.5 }}>
+          <StatPill label={ratePillLabel} value={`${completionRate}%`} />
+          <StatPill label={openPillLabel} value={String(pending)} />
+          <StatPill label={donePillLabel} value={String(completed)} />
+        </Stack>
+      )}
       {footnote ? (
         <Typography variant="caption" sx={{ color: '#94a3b8', lineHeight: 1.45 }}>
           {footnote}

@@ -15,7 +15,7 @@ const surfaceCardSx = {
 function DashboardAnalyticsChartsComponent({ analytics }) {
   const fire = analytics?.trainingCharts?.fire
   const cpr = analytics?.trainingCharts?.cpr
-  const induction = analytics?.assignments?.safetyInduction
+  const induction = analytics?.trainingCharts?.induction ?? analytics?.assignments?.safetyInduction
   const monthly = analytics?.employees?.monthly || []
 
   const employeeRegYAxisMax = useMemo(() => {
@@ -42,37 +42,17 @@ function DashboardAnalyticsChartsComponent({ analytics }) {
         >
           <Card elevation={0} sx={{ ...surfaceCardSx, p: 0 }}>
             <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-              <DashboardDoughnut
-                title="Fire training"
-                bucket={fire}
-                completedLegendLabel="Quiz submitted"
-                pendingLegendLabel="Not submitted"
-                ratePillLabel="Submission rate"
-                openPillLabel="Not submitted"
-                doneCountPillLabel="Submitted"
-              />
+              <DashboardDoughnut title="Fire training" bucket={fire} />
             </CardContent>
           </Card>
           <Card elevation={0} sx={{ ...surfaceCardSx, p: 0 }}>
             <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-              <DashboardDoughnut
-                title="CPR training"
-                bucket={cpr}
-                completedLegendLabel="Quiz submitted"
-                pendingLegendLabel="Not submitted"
-                ratePillLabel="Submission rate"
-                openPillLabel="Not submitted"
-                doneCountPillLabel="Submitted"
-              />
+              <DashboardDoughnut title="CPR training" bucket={cpr} />
             </CardContent>
           </Card>
           <Card elevation={0} sx={{ ...surfaceCardSx, p: 0 }}>
             <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-              <DashboardDoughnut
-                title="Safety induction"
-                subtitle="Assignments created in the selected period"
-                bucket={induction}
-              />
+              <DashboardDoughnut title="Safety induction" bucket={induction} />
             </CardContent>
           </Card>
         </Box>

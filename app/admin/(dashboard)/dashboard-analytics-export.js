@@ -69,14 +69,33 @@ export async function exportDashboardExcel(analytics, { fileBase = 'petrogas-ana
 
   const f = analytics?.trainingCharts?.fire
   const c = analytics?.trainingCharts?.cpr
+  const ind = analytics?.trainingCharts?.induction
   const i = analytics?.assignments?.safetyInduction
   const ws2 = XLSX.utils.aoa_to_sheet([
-    ['Training chart', 'Total', 'Completed', 'Pending'],
-    ['Fire (general training pool)', f?.total ?? 0, f?.completed ?? 0, f?.pending ?? 0],
-    ['CPR (general training pool)', c?.total ?? 0, c?.completed ?? 0, c?.pending ?? 0],
-    ['Safety induction', i?.total ?? 0, i?.completed ?? 0, i?.pending ?? 0],
+    ['Training chart', 'Total', 'Passed', 'Submitted (not passed)', 'Not submitted'],
+    [
+      'Fire (general training pool)',
+      f?.kind === 'moduleTriplet' ? f.total : f?.total ?? 0,
+      f?.kind === 'moduleTriplet' ? f.passed : f?.completed ?? 0,
+      f?.kind === 'moduleTriplet' ? f.failedSubmit : '—',
+      f?.kind === 'moduleTriplet' ? f.notSubmitted : f?.pending ?? 0,
+    ],
+    [
+      'CPR (general training pool)',
+      c?.kind === 'moduleTriplet' ? c.total : c?.total ?? 0,
+      c?.kind === 'moduleTriplet' ? c.passed : c?.completed ?? 0,
+      c?.kind === 'moduleTriplet' ? c.failedSubmit : '—',
+      c?.kind === 'moduleTriplet' ? c.notSubmitted : c?.pending ?? 0,
+    ],
+    [
+      'Safety induction',
+      ind?.kind === 'moduleTriplet' ? ind.total : i?.total ?? 0,
+      ind?.kind === 'moduleTriplet' ? ind.passed : i?.completed ?? 0,
+      ind?.kind === 'moduleTriplet' ? ind.failedSubmit : '—',
+      ind?.kind === 'moduleTriplet' ? ind.notSubmitted : i?.pending ?? 0,
+    ],
   ])
-  ws2['!cols'] = [{ wch: 32 }, { wch: 10 }, { wch: 12 }, { wch: 10 }]
+  ws2['!cols'] = [{ wch: 34 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 14 }]
   XLSX.utils.book_append_sheet(wb, ws2, 'Training & induction')
 
   const safeName = `${fileBase}-${new Date().toISOString().slice(0, 10)}.xlsx`
@@ -115,12 +134,26 @@ export async function exportDashboardPdf(analytics, { fileBase = 'petrogas-analy
   doc.line(margin, y, 548, y)
   y += 20
 
+  const indChart = analytics?.trainingCharts?.induction
+  const si = analytics?.assignments?.safetyInduction
+  const inductionSummaryLines =
+    indChart?.kind === 'moduleTriplet'
+      ? [
+          ['Induction — total', String(indChart.total)],
+          ['Induction — passed', String(indChart.passed)],
+          ['Induction — submitted, not passed', String(indChart.failedSubmit)],
+          ['Induction — not submitted', String(indChart.notSubmitted)],
+        ]
+      : [
+          ['Induction — total', String(si?.total ?? 0)],
+          ['Induction — completed', String(si?.completed ?? 0)],
+          ['Induction — open / pending', String(si?.pending ?? 0)],
+        ]
+
   const lines = [
     ['New employees', String(analytics?.employees?.newInPeriod ?? 0)],
     ['Employees (total)', String(analytics?.employees?.totalRegisteredThroughPeriodEnd ?? 0)],
-    ['Induction — total', String(analytics?.assignments?.safetyInduction?.total ?? 0)],
-    ['Induction — completed', String(analytics?.assignments?.safetyInduction?.completed ?? 0)],
-    ['Induction — open / pending', String(analytics?.assignments?.safetyInduction?.pending ?? 0)],
+    ...inductionSummaryLines,
     ['Training — total', String(analytics?.assignments?.generalTraining?.total ?? 0)],
     ['Training — completed', String(analytics?.assignments?.generalTraining?.completed ?? 0)],
     ['Training — open / pending', String(analytics?.assignments?.generalTraining?.pending ?? 0)],
