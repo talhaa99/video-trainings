@@ -6,6 +6,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   FormControl,
   IconButton,
   InputAdornment,
@@ -271,6 +272,7 @@ export default function DashboardAnalyticsClient({ initialYear, initialAnalytics
   const [sessionReady, setSessionReady] = useState(false)
   const [analytics, setAnalytics] = useState(initialAnalytics)
   const [loading, setLoading] = useState(false)
+  const [exportKind, setExportKind] = useState(null)
   const [error, setError] = useState(null)
   const lastOkKeyRef = useRef(initialAnalytics && initialRangeKey ? initialRangeKey : '')
   const abortRef = useRef(null)
@@ -390,6 +392,27 @@ export default function DashboardAnalyticsClient({ initialYear, initialAnalytics
   }, [])
 
   const exportBusy = loading || !analytics
+  const exportLocked = exportBusy || exportKind !== null
+
+  async function handleExportExcel() {
+    if (!analytics || exportKind) return
+    setExportKind('excel')
+    try {
+      await exportDashboardExcel(analytics)
+    } finally {
+      setExportKind(null)
+    }
+  }
+
+  async function handleExportPdf() {
+    if (!analytics || exportKind) return
+    setExportKind('pdf')
+    try {
+      await exportDashboardPdf(analytics)
+    } finally {
+      setExportKind(null)
+    }
+  }
   const cy = getCurrentUtcYear()
 
   const onPeriodSegment = useCallback((_, value) => {
@@ -618,22 +641,34 @@ export default function DashboardAnalyticsClient({ initialYear, initialAnalytics
                 <Button
                   size="small"
                   variant="outlined"
-                  startIcon={<FileDownload sx={{ fontSize: 18, color: 'inherit' }} />}
-                  disabled={exportBusy}
-                  onClick={() => void exportDashboardExcel(analytics)}
+                  startIcon={
+                    exportKind === 'excel' ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <FileDownload sx={{ fontSize: 18, color: 'inherit' }} />
+                    )
+                  }
+                  disabled={exportLocked}
+                  onClick={() => void handleExportExcel()}
                   sx={toolbarExportBtnSx}
                 >
-                  Excel
+                  {exportKind === 'excel' ? 'Exporting…' : 'Excel'}
                 </Button>
                 <Button
                   size="small"
                   variant="outlined"
-                  startIcon={<Description sx={{ fontSize: 18, color: 'inherit' }} />}
-                  disabled={exportBusy}
-                  onClick={() => void exportDashboardPdf(analytics)}
+                  startIcon={
+                    exportKind === 'pdf' ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : (
+                      <Description sx={{ fontSize: 18, color: 'inherit' }} />
+                    )
+                  }
+                  disabled={exportLocked}
+                  onClick={() => void handleExportPdf()}
                   sx={toolbarExportBtnSx}
                 >
-                  PDF
+                  {exportKind === 'pdf' ? 'Exporting…' : 'PDF'}
                 </Button>
               </Stack>
           </Stack>

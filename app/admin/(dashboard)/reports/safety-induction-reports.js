@@ -1,23 +1,36 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
   TextField,
   Tooltip,
   Typography,
   IconButton,
 } from '@mui/material'
-import { ContentCopy as ContentCopyIcon, Assessment as AssessmentIcon } from '@mui/icons-material'
+import {
+  Assessment as AssessmentIcon,
+  ContentCopy as ContentCopyIcon,
+  Description as DescriptionIcon,
+  PictureAsPdf as PictureAsPdfIcon,
+} from '@mui/icons-material'
 import {
   TrainingModuleFilter,
   generalTrainingFilterKindFromAttempt,
@@ -26,6 +39,7 @@ import {
   titleGeneralTrainingProgram,
   titleSafetyInduction,
 } from '../../../../lib/admin/training-module-display'
+import { exportTrainingReportsExcel, exportTrainingReportsPdf } from './training-reports-export'
 
 const cardSx = {
   borderRadius: 2.5,
@@ -38,7 +52,7 @@ function formatTimestamp(dateValue) {
   if (!dateValue) return '—'
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
-    month: '2-digit',
+    month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -121,7 +135,7 @@ function buildReportRows(assignments) {
         sortDate,
         quizScore: null,
         outcome: 'opened',
-        outcomeLabel: 'Opened',
+        outcomeLabel: 'In progress',
         trainingTitle,
         trainingType,
         moduleFilterKind,
@@ -134,6 +148,44 @@ function buildReportRows(assignments) {
     }
   }
   return rows
+}
+
+function parseDayStart(s) {
+  if (!s) return null
+  const t = new Date(`${s}T00:00:00`).getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+function parseDayEnd(s) {
+  if (!s) return null
+  const t = new Date(`${s}T23:59:59.999`).getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+function rowInDateRange(row, fromStr, toStr) {
+  if (!fromStr && !toStr) return true
+  const t = row.sortDate ? new Date(row.sortDate).getTime() : NaN
+  if (!Number.isFinite(t)) return false
+  const start = parseDayStart(fromStr) ?? -Infinity
+  const end = parseDayEnd(toStr) ?? Infinity
+  return t >= start && t <= end
+}
+
+function applyDatePreset(preset) {
+  const to = new Date()
+  const toStr = to.toISOString().slice(0, 10)
+  if (preset === 'all') return { from: '', to: '' }
+  const days = preset === '7d' ? 7 : preset === '90d' ? 90 : 30
+  const from = new Date(to)
+  from.setDate(from.getDate() - days)
+  return { from: from.toISOString().slice(0, 10), to: toStr }
+}
+
+function formatPeriodLabel(fromStr, toStr) {
+  if (!fromStr && !toStr) return 'All dates'
+  if (fromStr && toStr) return `${fromStr} → ${toStr} (inclusive)`
+  if (fromStr) return `From ${fromStr}`
+  return `Through ${toStr}`
 }
 
 function outcomeChipSx(outcome) {
@@ -149,144 +201,46 @@ function outcomeChipSx(outcome) {
   return { backgroundColor: 'rgba(148, 163, 184, 0.2)', color: '#475569' }
 }
 
-function ReportCard({ row, copiedId, onCopy }) {
-  return (
-    <Card elevation={0} sx={{ ...cardSx, height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <CardContent sx={{ p: 2.25, display: 'flex', flexDirection: 'column', flexGrow: 1, '&:last-child': { pb: 2.25 } }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1} sx={{ mb: 1.5 }}>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 800, color: '#1e293b', fontSize: '1.05rem', lineHeight: 1.25 }} noWrap title={row.name}>
-              {row.name}
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748b', mt: 0.35 }} noWrap title={row.email}>
-              {row.email}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={0.5} alignItems="flex-start" flexShrink={0}>
-            <Chip size="small" label={row.outcomeLabel} sx={{ borderRadius: 1.5, fontWeight: 700, ...outcomeChipSx(row.outcome) }} />
-            {row.linkUrl ? (
-              <Tooltip title={copiedId === row.key ? 'Copied' : 'Copy assignment link'} arrow>
-                <IconButton
-                  size="small"
-                  onClick={() => onCopy(row.key, row.linkUrl)}
-                  sx={{
-                    borderRadius: 1.25,
-                    color: '#475569',
-                    '&:hover': { color: '#312e81', backgroundColor: 'rgba(51, 48, 146, 0.08)' },
-                  }}
-                >
-                  <ContentCopyIcon sx={{ fontSize: 17 }} />
-                </IconButton>
-              </Tooltip>
-            ) : null}
-          </Stack>
-        </Stack>
+function scoreCell(row) {
+  if (row.kind !== 'attempt') return '—'
+  if (row.trainingType === 'general_training') {
+    return row.quizScore != null ? String(row.quizScore) : '—'
+  }
+  return row.quizScore != null ? `${row.quizScore} / 5` : '—'
+}
 
-        <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-          {row.trainingTitle}
-        </Typography>
-
-        <Stack spacing={0.85} sx={{ mt: 1.5, flexGrow: 1 }}>
-          {row.kind === 'attempt' ? (
-            <>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Attempt
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                  {row.attemptNumber ?? '—'}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Submitted
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
-                  {formatTimestamp(row.submittedAt)}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Score
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
-                  {row.trainingType === 'general_training'
-                    ? row.quizScore != null
-                      ? String(row.quizScore)
-                      : '—'
-                    : row.quizScore != null
-                      ? `${row.quizScore} / 5`
-                      : '—'}
-                </Typography>
-              </Stack>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.55 }}>
-                {row.trainingType === 'general_training'
-                  ? 'Link opened or training started; no quiz completion recorded yet.'
-                  : 'Link opened or induction started; no quiz submission recorded yet.'}
-              </Typography>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Opened
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
-                  {formatTimestamp(row.openedAt)}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                  Started
-                </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
-                  {formatTimestamp(row.startedAt)}
-                </Typography>
-              </Stack>
-            </>
-          )}
-          {row.employeeCode ? (
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-                Employee ID
-              </Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }} noWrap>
-                {row.employeeCode}
-              </Typography>
-            </Stack>
-          ) : null}
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
-              Recipient
-            </Typography>
-            <Chip
-              size="small"
-              label={row.recipientType === 'employee' ? 'Employee' : 'External'}
-              sx={{ borderRadius: 1.5, fontWeight: 600, backgroundColor: 'rgba(15, 23, 42, 0.06)' }}
-            />
-          </Stack>
-          <Typography variant="caption" sx={{ color: '#94a3b8', pt: 0.5 }}>
-            Assignment #{row.assignmentId} · Status: {row.assignmentStatus || '—'}
-          </Typography>
-        </Stack>
-      </CardContent>
-    </Card>
-  )
+function buildSummaryLines(rows) {
+  const passed = rows.filter((r) => r.outcome === 'passed').length
+  const failed = rows.filter((r) => r.outcome === 'failed').length
+  const opened = rows.filter((r) => r.outcome === 'opened').length
+  const submitted = rows.filter((r) => r.outcome === 'submitted').length
+  return [
+    ['Total rows', rows.length],
+    ['Passed', passed],
+    ['Failed', failed],
+    ['Submitted (pending scoring)', submitted],
+    ['In progress (opened, no quiz yet)', opened],
+  ]
 }
 
 export default function SafetyInductionReports({ assignments }) {
+  const [datePreset, setDatePreset] = useState('30d')
+  const [dateFrom, setDateFrom] = useState(() => applyDatePreset('30d').from)
+  const [dateTo, setDateTo] = useState(() => applyDatePreset('30d').to)
   const [outcomeFilter, setOutcomeFilter] = useState('all')
   const [userTypeFilter, setUserTypeFilter] = useState('all')
   const [moduleTypeFilter, setModuleTypeFilter] = useState(TrainingModuleFilter.ALL)
   const [sortOrder, setSortOrder] = useState('newest')
   const [search, setSearch] = useState('')
   const [copiedId, setCopiedId] = useState(null)
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [exportKind, setExportKind] = useState(null)
 
   const allRows = useMemo(() => buildReportRows(assignments), [assignments])
 
   const filteredSorted = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    let list = allRows
+    let list = allRows.filter((r) => rowInDateRange(r, dateFrom, dateTo))
 
     if (outcomeFilter !== 'all') {
       list = list.filter((r) => r.outcome === outcomeFilter)
@@ -302,6 +256,7 @@ export default function SafetyInductionReports({ assignments }) {
       list = list.filter((r) => matchesTrainingModuleFilter(r, moduleTypeFilter))
     }
 
+    const q = search.trim().toLowerCase()
     if (q) {
       list = list.filter((r) => {
         const n = `${r.name}`.toLowerCase()
@@ -319,7 +274,20 @@ export default function SafetyInductionReports({ assignments }) {
       if (ta === tb) return a.key.localeCompare(b.key)
       return (ta - tb) * dir
     })
-  }, [allRows, outcomeFilter, userTypeFilter, moduleTypeFilter, search, sortOrder])
+  }, [allRows, dateFrom, dateTo, outcomeFilter, userTypeFilter, moduleTypeFilter, search, sortOrder])
+
+  const summaryLines = useMemo(() => buildSummaryLines(filteredSorted), [filteredSorted])
+
+  const periodLabel = formatPeriodLabel(dateFrom, dateTo)
+
+  useEffect(() => {
+    setPage(0)
+  }, [filteredSorted.length, dateFrom, dateTo, outcomeFilter, userTypeFilter, moduleTypeFilter, search, sortOrder])
+
+  const pagedRows = useMemo(() => {
+    const start = page * rowsPerPage
+    return filteredSorted.slice(start, start + rowsPerPage)
+  }, [filteredSorted, page, rowsPerPage])
 
   async function handleCopy(key, link) {
     try {
@@ -331,11 +299,58 @@ export default function SafetyInductionReports({ assignments }) {
     }
   }
 
+  function handlePeriodSelect(value) {
+    if (value === 'custom') {
+      setDatePreset(null)
+      return
+    }
+    setDatePreset(value)
+    const { from, to } = applyDatePreset(value)
+    setDateFrom(from)
+    setDateTo(to)
+  }
+
+  function resetFilters() {
+    setOutcomeFilter('all')
+    setUserTypeFilter('all')
+    setModuleTypeFilter(TrainingModuleFilter.ALL)
+    setSearch('')
+    setSortOrder('newest')
+    setDatePreset('30d')
+    const d = applyDatePreset('30d')
+    setDateFrom(d.from)
+    setDateTo(d.to)
+  }
+
+  async function runExport(kind) {
+    if (filteredSorted.length === 0 || exportKind) return
+    setExportKind(kind)
+    try {
+      const meta = { periodLabel, summaryLines }
+      if (kind === 'excel') {
+        await exportTrainingReportsExcel(filteredSorted, meta)
+      } else {
+        await exportTrainingReportsPdf(filteredSorted, meta)
+      }
+    } finally {
+      setExportKind(null)
+    }
+  }
+
+  const hasActiveFilters =
+    outcomeFilter !== 'all' ||
+    userTypeFilter !== 'all' ||
+    moduleTypeFilter !== TrainingModuleFilter.ALL ||
+    Boolean(search.trim()) ||
+    datePreset !== '30d'
+
+  const periodSelectValue = ['7d', '30d', '90d', 'all'].includes(datePreset) ? datePreset : 'custom'
+
   return (
     <Stack spacing={2.5}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'flex-start' }} justifyContent="space-between">
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 0.5 }}>
+      <Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }} justifyContent="space-between">
+          <Stack direction="row" spacing={1.5} alignItems="flex-start">
             <Box
               sx={{
                 width: 44,
@@ -346,32 +361,106 @@ export default function SafetyInductionReports({ assignments }) {
                 justifyContent: 'center',
                 background: 'linear-gradient(135deg, rgba(227, 27, 35, 0.12) 0%, rgba(51, 48, 146, 0.14) 100%)',
                 border: '1px solid rgba(148, 163, 184, 0.25)',
+                flexShrink: 0,
               }}
             >
               <AssessmentIcon sx={{ color: '#312e81', fontSize: 26 }} />
             </Box>
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography variant="h4" sx={{ fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                Induction &amp; Training Reports
+                Training Activity Report
               </Typography>
             </Box>
           </Stack>
-          <Typography sx={{ color: '#64748b', mt: 0.75, width: '100%', lineHeight: 1.6 }}>
-            Quiz attempt history and open progress for Safety Induction, Firefighter training, and CPR training. Each card is one
-            submission or one in-progress recipient who has not yet submitted a quiz (where applicable).
-          </Typography>
-        </Box>
-      </Stack>
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ flexShrink: 0 }}>
+            <Button
+              variant="contained"
+              startIcon={
+                exportKind === 'excel' ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <DescriptionIcon />
+                )
+              }
+              disabled={exportKind !== null || filteredSorted.length === 0}
+              onClick={() => void runExport('excel')}
+              sx={{
+                borderRadius: 1.75,
+                minHeight: 40,
+                px: 2,
+                fontWeight: 700,
+                textTransform: 'none',
+                background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+              }}
+            >
+              {exportKind === 'excel' ? 'Exporting…' : 'Excel'}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={
+                exportKind === 'pdf' ? (
+                  <CircularProgress size={18} sx={{ color: '#334155' }} />
+                ) : (
+                  <PictureAsPdfIcon />
+                )
+              }
+              disabled={exportKind !== null || filteredSorted.length === 0}
+              onClick={() => void runExport('pdf')}
+              sx={{ borderRadius: 1.75, fontWeight: 700, textTransform: 'none', borderColor: 'rgba(148, 163, 184, 0.45)', color: '#334155' }}
+            >
+              {exportKind === 'pdf' ? 'Exporting…' : 'PDF'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
 
       <Card elevation={0} sx={cardSx}>
         <CardContent sx={{ p: { xs: 2, md: 2.25 } }}>
-          <Stack
-            direction={{ xs: 'column', lg: 'row' }}
-            spacing={2}
-            alignItems={{ xs: 'stretch', lg: 'flex-end' }}
-            flexWrap="wrap"
-          >
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems={{ xs: 'stretch', lg: 'flex-end' }} flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+              <InputLabel id="reports-period-label">Quick period</InputLabel>
+              <Select
+                labelId="reports-period-label"
+                label="Quick period"
+                value={periodSelectValue}
+                onChange={(e) => handlePeriodSelect(e.target.value)}
+                sx={{ borderRadius: 1.75 }}
+              >
+                <MenuItem value="7d">Last 7 days</MenuItem>
+                <MenuItem value="30d">Last 30 days</MenuItem>
+                <MenuItem value="90d">Last 90 days</MenuItem>
+                <MenuItem value="all">All time</MenuItem>
+                <MenuItem value="custom">Custom (use dates below)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              size="small"
+              label="From"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setDatePreset(null)
+              }}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: { xs: '100%', sm: 158 }, '& .MuiOutlinedInput-root': { borderRadius: 1.75 } }}
+            />
+            <TextField
+              size="small"
+              label="To"
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setDatePreset(null)
+              }}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: { xs: '100%', sm: 158 }, '& .MuiOutlinedInput-root': { borderRadius: 1.75 } }}
+            />
+
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
               <InputLabel id="reports-outcome-label">Outcome</InputLabel>
               <Select
                 labelId="reports-outcome-label"
@@ -383,10 +472,12 @@ export default function SafetyInductionReports({ assignments }) {
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="passed">Passed</MenuItem>
                 <MenuItem value="failed">Failed</MenuItem>
-                <MenuItem value="opened">Opened</MenuItem>
+                <MenuItem value="submitted">Submitted</MenuItem>
+                <MenuItem value="opened">In progress</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
               <InputLabel id="reports-user-type-label">User type</InputLabel>
               <Select
                 labelId="reports-user-type-label"
@@ -400,7 +491,8 @@ export default function SafetyInductionReports({ assignments }) {
                 <MenuItem value="non-employee">Non-Employee</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 220 } }}>
+
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
               <InputLabel id="reports-module-type-label">Training</InputLabel>
               <Select
                 labelId="reports-module-type-label"
@@ -415,7 +507,8 @@ export default function SafetyInductionReports({ assignments }) {
                 <MenuItem value={TrainingModuleFilter.CPR}>CPR training</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
+
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
               <InputLabel id="reports-sort-label">Date order</InputLabel>
               <Select
                 labelId="reports-sort-label"
@@ -428,61 +521,171 @@ export default function SafetyInductionReports({ assignments }) {
                 <MenuItem value="oldest">Oldest first</MenuItem>
               </Select>
             </FormControl>
+
             <TextField
               size="small"
-              label="Search name, email, or employee ID"
+              label="Search"
+              placeholder="Name, email, employee ID, or training"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ flexGrow: 1, minWidth: { xs: '100%', md: 240 }, '& .MuiOutlinedInput-root': { borderRadius: 1.75 } }}
+              sx={{ flexGrow: 1, minWidth: { xs: '100%', md: 220 }, '& .MuiOutlinedInput-root': { borderRadius: 1.75 } }}
             />
+
+            {hasActiveFilters ? (
+              <Button variant="outlined" onClick={resetFilters} sx={{ borderRadius: 1.75, fontWeight: 700, textTransform: 'none', alignSelf: { xs: 'stretch', lg: 'center' } }}>
+                Reset filters
+              </Button>
+            ) : null}
+
             <Typography variant="body2" sx={{ color: '#64748b', alignSelf: 'center', fontWeight: 600, whiteSpace: 'nowrap' }}>
-              {filteredSorted.length} report{filteredSorted.length === 1 ? '' : 's'}
+              {periodLabel} · {filteredSorted.length} row{filteredSorted.length === 1 ? '' : 's'}
             </Typography>
           </Stack>
         </CardContent>
       </Card>
 
-      {filteredSorted.length === 0 ? (
-        <Card elevation={0} sx={cardSx}>
-          <CardContent sx={{ py: 5, textAlign: 'center' }}>
-            <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 1 }}>No reports match your filters</Typography>
-            <Typography sx={{ color: '#64748b', maxWidth: 480, mx: 'auto' }}>
-              Try clearing the search or setting Outcome to &quot;All&quot;. Opened-only rows appear when a recipient has opened or
-              started the induction but has no quiz attempts logged yet.
-            </Typography>
-            {outcomeFilter !== 'all' || userTypeFilter !== 'all' || moduleTypeFilter !== TrainingModuleFilter.ALL || search.trim() ? (
-              <Button
-                variant="outlined"
-                sx={{ mt: 2, borderRadius: 1.75, fontWeight: 700 }}
-                onClick={() => {
-                  setOutcomeFilter('all')
-                  setUserTypeFilter('all')
-                  setModuleTypeFilter(TrainingModuleFilter.ALL)
-                  setSearch('')
-                }}
-              >
-                Reset filters
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, minmax(0, 1fr))',
-              lg: 'repeat(3, minmax(0, 1fr))',
-            },
-          }}
-        >
-          {filteredSorted.map((row) => (
-            <ReportCard key={row.key} row={row} copiedId={copiedId} onCopy={handleCopy} />
-          ))}
-        </Box>
-      )}
+      <Card elevation={0} sx={{ ...cardSx, width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}>
+        <CardContent sx={{ p: { xs: 1.75, md: 2.25 }, pt: { xs: 1.5, md: 2 } }}>
+          <TableContainer
+            sx={{
+              width: '100%',
+              maxWidth: '100%',
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              mx: { xs: -0.5, sm: 0 },
+              px: { xs: 0.5, sm: 0 },
+            }}
+          >
+            <Table
+              size="small"
+              sx={{
+                minWidth: 980,
+                tableLayout: 'auto',
+                '& .MuiTableCell-root': {
+                  py: 0.9,
+                  verticalAlign: 'middle',
+                  borderBottomColor: 'rgba(148, 163, 184, 0.24)',
+                  whiteSpace: 'nowrap',
+                },
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Activity</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Training</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Outcome</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Recipient</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Employee ID</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }} align="right">
+                    Attempt
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }} align="right">
+                    Score
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155' }}>Assignment</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#334155', width: 64 }} align="right">
+                    Link
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pagedRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10}>
+                      <Typography sx={{ color: '#64748b', py: 2, fontWeight: 600 }}>
+                        No rows match your filters or date range. Try &quot;All time&quot;, reset filters, or widen the date window.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  pagedRows.map((row) => (
+                    <TableRow key={row.key} hover sx={{ '&:hover': { backgroundColor: 'rgba(148, 163, 184, 0.07)' } }}>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                          {formatTimestamp(row.sortDate)}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block' }}>
+                          {row.kind === 'attempt' ? 'Quiz submission' : 'Opened / started'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 220, whiteSpace: 'normal' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                          {row.trainingTitle}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                          {row.recipientType === 'employee' ? 'Employee' : 'External'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="small" label={row.outcomeLabel} sx={{ fontWeight: 700, borderRadius: 1.5, ...outcomeChipSx(row.outcome) }} />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>{row.name}</TableCell>
+                      <TableCell sx={{ color: '#475569', maxWidth: 200 }} title={row.email}>
+                        <Typography variant="body2" noWrap>
+                          {row.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ color: '#475569' }}>{row.employeeCode ?? '—'}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>
+                        {row.attemptNumber ?? '—'}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {scoreCell(row)}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
+                          #{row.assignmentId}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                          {row.assignmentStatus || '—'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        {row.linkUrl ? (
+                          <Tooltip title={copiedId === row.key ? 'Copied' : 'Copy assignment link'} arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleCopy(row.key, row.linkUrl)}
+                              sx={{
+                                borderRadius: 1.25,
+                                p: 0.8,
+                                color: '#475569',
+                                '&:hover': { color: '#312e81', backgroundColor: 'rgba(51, 48, 146, 0.08)' },
+                              }}
+                            >
+                              <ContentCopyIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            rowsPerPageOptions={[10, 25, 50, 100]}
+            count={filteredSorted.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(_e, p) => setPage(p)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10))
+              setPage(0)
+            }}
+            sx={{
+              borderTop: '1px solid rgba(148, 163, 184, 0.28)',
+              '& .MuiTablePagination-toolbar': { px: 0.5, py: 0.75 },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontWeight: 600, color: '#64748b' },
+            }}
+          />
+        </CardContent>
+      </Card>
     </Stack>
   )
 }
