@@ -45,57 +45,105 @@ export default function Home() {
   const trainingData = getTrainingData(language)
   const assignmentToken = searchParams.get('assignment')
 
-  console.log('Current view:', currentView, 'Current video index:', currentVideoIndex)
+  const trackAssignedEvent = async (eventType, payload = {}) => {
+    if (!assignmentToken) return false
+    try {
+      const res = await fetch('/api/assignments/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: assignmentToken,
+          eventType,
+          payload,
+        }),
+      })
+      return res.ok
+    } catch (_error) {
+      return false
+    }
+  }
 
   const handleStartVideo = (videoIndex) => {
-    console.log('Starting video:', videoIndex, trainingData.videos[videoIndex])
     setCurrentVideoIndex(videoIndex)
     setCurrentView('video')
   }
 
   const handleVideoComplete = () => {
-    console.log('Video completed, moving to quiz')
     setCurrentView('quiz')
   }
 
-  const handleQuizComplete = (answers, score) => {
+  const handleQuizComplete = async (answers, score) => {
     const currentVideoId = trainingData.videos[currentVideoIndex].id
     const currentQuiz = trainingData.quizzes.find(quiz => quiz.videoId === currentVideoId)
-    
+    const totalQuestions = currentQuiz ? currentQuiz.questions.length : 0
+    const passedModule = totalQuestions > 0 && score / totalQuestions >= 0.7
+
     const newResult = {
       videoId: currentVideoId,
       videoIndex: currentVideoIndex,
       answers,
       score,
-      totalQuestions: currentQuiz ? currentQuiz.questions.length : 0
+      totalQuestions,
     }
-    
-    setQuizResults([...quizResults, newResult])
+
+    const mergedResults = [...quizResults, newResult]
+    setQuizResults(mergedResults)
     setCurrentQuizAnswers(answers)
-    
+
+    if (assignmentToken && assignmentState.trainingType === 'general_training') {
+      await trackAssignedEvent('quiz_submitted', {
+        source: 'module_quiz',
+        moduleIndex: currentVideoIndex,
+        modulesTotal: trainingData.videos.length,
+        videoId: currentVideoId,
+        quizScore: score,
+        quizPassed: passedModule,
+        totalQuestions,
+      })
+    }
+
+    if (passedModule && assignmentToken && assignmentState.trainingType === 'general_training') {
+      await trackAssignedEvent('module_completed', {
+        moduleIndex: currentVideoIndex,
+        modulesTotal: trainingData.videos.length,
+        videoId: currentVideoId,
+      })
+    }
+
+    const isLastModule = currentVideoIndex === trainingData.videos.length - 1
+    if (
+      passedModule &&
+      isLastModule &&
+      assignmentToken &&
+      assignmentState.trainingType === 'general_training' &&
+      !completionEventSentRef.current
+    ) {
+      completionEventSentRef.current = true
+      const totalCorrect = mergedResults.reduce((acc, item) => acc + (Number(item?.score) || 0), 0)
+      const totalQs = mergedResults.reduce((acc, item) => acc + (Number(item?.totalQuestions) || 0), 0)
+      const summary = `Modules completed: ${mergedResults.length}/${trainingData.videos.length}, Score: ${totalCorrect}/${totalQs}`
+      const ok = await trackAssignedEvent('completed', {
+        modulesCompleted: mergedResults.length,
+        modulesTotal: trainingData.videos.length,
+        totalCorrect,
+        totalQuestions: totalQs,
+        summary,
+      })
+      if (!ok) {
+        completionEventSentRef.current = false
+      }
+    }
+
     // Always show results screen after each video
     setCurrentView('results')
   }
 
-  const handleNextVideo = async () => {
+  const handleNextVideo = () => {
     // Move to next video if available
     if (currentVideoIndex < trainingData.videos.length - 1) {
-      setCurrentVideoIndex(prev => prev + 1)
+      setCurrentVideoIndex((prev) => prev + 1)
       setCurrentView('video')
     } else {
-      if (assignmentToken && assignmentState.trainingType === 'general_training') {
-        const totalCorrect = quizResults.reduce((acc, item) => acc + (Number(item?.score) || 0), 0)
-        const totalQuestions = quizResults.reduce((acc, item) => acc + (Number(item?.totalQuestions) || 0), 0)
-        const summary = `Modules completed: ${quizResults.length}/${trainingData.videos.length}, Score: ${totalCorrect}/${totalQuestions}`
-        await trackAssignedEvent('completed', {
-          modulesCompleted: quizResults.length,
-          modulesTotal: trainingData.videos.length,
-          totalCorrect,
-          totalQuestions,
-          summary,
-        })
-      }
-      // If no more videos, go back to home
       handleBackToHome()
     }
   }
@@ -178,47 +226,6 @@ export default function Home() {
       isMounted = false
     }
   }, [assignmentToken])
-
-  useEffect(() => {
-    const shouldSendCompletion =
-      Boolean(assignmentToken) &&
-      assignmentState.trainingType === 'general_training' &&
-      currentView === 'results' &&
-      quizResults.length >= trainingData.videos.length &&
-      !completionEventSentRef.current
-
-    if (!shouldSendCompletion) return
-
-    completionEventSentRef.current = true
-    const totalCorrect = quizResults.reduce((acc, item) => acc + (Number(item?.score) || 0), 0)
-    const totalQuestions = quizResults.reduce((acc, item) => acc + (Number(item?.totalQuestions) || 0), 0)
-    const summary = `Modules completed: ${quizResults.length}/${trainingData.videos.length}, Score: ${totalCorrect}/${totalQuestions}`
-
-    trackAssignedEvent('completed', {
-      modulesCompleted: quizResults.length,
-      modulesTotal: trainingData.videos.length,
-      totalCorrect,
-      totalQuestions,
-      summary,
-    })
-  }, [assignmentToken, assignmentState.trainingType, currentView, quizResults, trainingData.videos.length])
-
-  const trackAssignedEvent = async (eventType, payload = {}) => {
-    if (!assignmentToken) return
-    try {
-      await fetch('/api/assignments/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: assignmentToken,
-          eventType,
-          payload,
-        }),
-      })
-    } catch (_error) {
-      // Tracking should never block the user journey.
-    }
-  }
 
   const renderAssignmentInvalidState = () => (
     <Container maxWidth="sm" sx={{ py: 6 }}>

@@ -145,8 +145,20 @@ function QuizAttemptsDialog({ open, row, onClose }) {
                     <Typography variant="body2" sx={{ color: '#475569', mt: 0.4 }}>
                       Submitted: {formatTimestamp(attempt?.submittedAt)}
                     </Typography>
+                    {attempt?.source === 'module_quiz' && attempt?.moduleIndex != null && Number.isFinite(Number(attempt.moduleIndex)) ? (
+                      <Typography variant="body2" sx={{ color: '#475569' }}>
+                        Training module {Number(attempt.moduleIndex) + 1}
+                        {attempt?.totalQuestions != null ? ` · ${attempt.totalQuestions} questions` : ''}
+                      </Typography>
+                    ) : null}
+                    {attempt?.source === 'training_completed' ? (
+                      <Typography variant="body2" sx={{ color: '#475569' }}>
+                        Full course summary
+                      </Typography>
+                    ) : null}
                     <Typography variant="body2" sx={{ color: '#475569' }}>
                       Score: {attempt?.quizScore ?? '-'}
+                      {attempt?.totalQuestions != null ? ` / ${attempt.totalQuestions}` : ''}
                     </Typography>
                   </CardContent>
                 </Card>

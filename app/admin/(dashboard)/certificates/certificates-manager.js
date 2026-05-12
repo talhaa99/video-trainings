@@ -69,7 +69,9 @@ function buildCertificateRows(assignments) {
     const employeeCode = isEmployee ? assignment.employee_code : null
     const moduleLabel = toModuleLabel(assignment.training_type)
 
-    const passedAttempts = attempts.filter((attempt) => attempt?.quizPassed === true)
+    const passedAttempts = attempts.filter(
+      (attempt) => attempt?.quizPassed === true && attempt?.source !== 'module_quiz',
+    )
 
     if (passedAttempts.length > 0) {
       for (const attempt of passedAttempts) {
