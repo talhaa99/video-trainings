@@ -33,11 +33,26 @@ import {
 import {
   Add as AddIcon,
   ContentCopy as ContentCopyIcon,
+  PlayCircleOutlined as PlayCircleOutlinedIcon,
   Timeline as TimelineIcon,
 } from '@mui/icons-material'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import AdminVideoPreviewDialog from '../admin-video-preview-dialog'
 import { sendInductionAction } from './actions'
+
+const DEFAULT_INDUCTION_VIDEO_BASE = 'https://video.training.tecshield.net'
+
+function normalizeVideoBase(url) {
+  if (!url) return ''
+  return url.endsWith('/') ? url.slice(0, -1) : url
+}
+
+/** Path suffixes on the video CDN — full URLs = base + path in `inductionVideoUrls` useMemo. */
+const INDUCTION_ADMIN_VIDEO_PATHS = {
+  en: ['/safety-enduction/video-en.mp4', '/safety-induction/en-new-video.mp4', '/safety-induction/video-en.mp4'],
+  ar: ['/safety-enduction/video-ar.mp4', '/safety-induction/video-ar.mp4'],
+}
 
 const cardSx = {
   borderRadius: 2.5,
@@ -437,8 +452,19 @@ function SendsTable({ title, rows, emptyText, hideTitle = false }) {
 export default function InductionsManager({ employees, assignments }) {
   const router = useRouter()
   const [sendOpen, setSendOpen] = useState(false)
+  const [videoPreview, setVideoPreview] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [sendsTab, setSendsTab] = useState(0)
+
+  /** Induction preview: paths from `INDUCTION_ADMIN_VIDEO_PATHS` on Tecshield CDN (same default base as trainingData.js). */
+  const inductionVideoUrls = useMemo(() => {
+    const base = normalizeVideoBase(process.env.NEXT_PUBLIC_VIDEO_DEPLOYED || DEFAULT_INDUCTION_VIDEO_BASE)
+    const toFull = (paths) => paths.map((p) => `${base}${p.startsWith('/') ? p : `/${p}`}`)
+    return {
+      en: toFull(INDUCTION_ADMIN_VIDEO_PATHS.en),
+      ar: toFull(INDUCTION_ADMIN_VIDEO_PATHS.ar),
+    }
+  }, [])
 
   const employeeSends = useMemo(
     () => assignments.filter((item) => item.recipient_type === 'employee'),
@@ -475,22 +501,52 @@ export default function InductionsManager({ employees, assignments }) {
             Send Safety Induction assignments to employees and external recipients.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setSendOpen(true)}
-          sx={{
-            borderRadius: 1.75,
-            minHeight: 42,
-            px: 2.25,
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
-            alignSelf: { xs: 'flex-start', sm: 'center' },
-            whiteSpace: 'nowrap',
-          }}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
         >
-          Send Safety Induction
-        </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<PlayCircleOutlinedIcon />}
+            onClick={() =>
+              setVideoPreview({
+                title: 'Safety induction — video preview',
+                sources: inductionVideoUrls,
+              })
+            }
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 40,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderColor: 'rgba(148, 163, 184, 0.45)',
+              color: '#334155',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Preview induction
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setSendOpen(true)}
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 42,
+              px: 2.25,
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Send Safety Induction
+          </Button>
+        </Stack>
       </Stack>
 
       {feedback ? (
@@ -580,6 +636,13 @@ export default function InductionsManager({ employees, assignments }) {
       {sendOpen ? (
         <SendInductionDialog open={sendOpen} onClose={() => setSendOpen(false)} onSuccess={handleSuccess} employees={employees} />
       ) : null}
+
+      <AdminVideoPreviewDialog
+        open={Boolean(videoPreview)}
+        title={videoPreview?.title ?? ''}
+        sources={videoPreview?.sources}
+        onClose={() => setVideoPreview(null)}
+      />
     </Stack>
   )
 }

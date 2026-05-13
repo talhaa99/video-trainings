@@ -32,10 +32,13 @@ import {
 import {
   Add as AddIcon,
   ContentCopy as ContentCopyIcon,
+  PlayCircleOutlined as PlayCircleOutlinedIcon,
   Timeline as TimelineIcon,
 } from '@mui/icons-material'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import { getTrainingData } from '../../../../data/trainingData'
+import AdminVideoPreviewDialog from '../admin-video-preview-dialog'
 import { sendTrainingAction } from './actions'
 
 const cardSx = {
@@ -418,8 +421,18 @@ function SendsTable({ rows, emptyText }) {
 export default function TrainingManager({ employees, assignments }) {
   const router = useRouter()
   const [sendOpen, setSendOpen] = useState(false)
+  const [videoPreview, setVideoPreview] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [sendsTab, setSendsTab] = useState(0)
+
+  /** Full URLs from trainingData `videoSources` (e.g. https://video.training.tecshield.net/videos/…); respects NEXT_PUBLIC_VIDEO_DEPLOYED. */
+  const trainingVideoUrls = useMemo(() => {
+    const d = getTrainingData('en')
+    return {
+      fire: { en: d.videoSources.fire.en, ar: d.videoSources.fire.ar },
+      cpr: { en: d.videoSources.cpr.en, ar: d.videoSources.cpr.ar },
+    }
+  }, [])
 
   const employeeSends = useMemo(
     () => assignments.filter((item) => item.recipient_type === 'employee'),
@@ -464,22 +477,74 @@ export default function TrainingManager({ employees, assignments }) {
             Send Start Training assignments to employees and external recipients.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setSendOpen(true)}
-          sx={{
-            borderRadius: 1.75,
-            minHeight: 42,
-            px: 2.25,
-            fontWeight: 700,
-            background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
-            alignSelf: { xs: 'flex-start', sm: 'center' },
-            whiteSpace: 'nowrap',
-          }}
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ alignSelf: { xs: 'stretch', sm: 'auto' } }}
         >
-          Send Start Training
-        </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<PlayCircleOutlinedIcon />}
+            onClick={() =>
+              setVideoPreview({
+                title: 'Fire training — video preview',
+                sources: trainingVideoUrls.fire,
+              })
+            }
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 40,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderColor: 'rgba(148, 163, 184, 0.45)',
+              color: '#334155',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Preview fire
+          </Button>
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<PlayCircleOutlinedIcon />}
+            onClick={() =>
+              setVideoPreview({
+                title: 'CPR training — video preview',
+                sources: trainingVideoUrls.cpr,
+              })
+            }
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 40,
+              fontWeight: 600,
+              textTransform: 'none',
+              borderColor: 'rgba(148, 163, 184, 0.45)',
+              color: '#334155',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Preview CPR
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setSendOpen(true)}
+            sx={{
+              borderRadius: 1.75,
+              minHeight: 42,
+              px: 2.25,
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #e31b23 0%, #333092 100%)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Send Start Training
+          </Button>
+        </Stack>
       </Stack>
 
       {feedback ? (
@@ -545,6 +610,13 @@ export default function TrainingManager({ employees, assignments }) {
       {sendOpen ? (
         <SendTrainingDialog open={sendOpen} onClose={() => setSendOpen(false)} onSuccess={handleSuccess} employees={employees} />
       ) : null}
+
+      <AdminVideoPreviewDialog
+        open={Boolean(videoPreview)}
+        title={videoPreview?.title ?? ''}
+        sources={videoPreview?.sources}
+        onClose={() => setVideoPreview(null)}
+      />
     </Stack>
   )
 }
