@@ -17,6 +17,35 @@ function pct(part, whole) {
   return Math.round((part / whole) * 1000) / 10
 }
 
+/** Recharts default tooltip sits under our absolutely positioned center label; custom surface + z-index keeps it readable on every slice. */
+function PieSliceTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const { name, value } = payload[0]
+  return (
+    <Box
+      sx={{
+        backgroundColor: '#ffffff',
+        border: '1px solid rgba(148, 163, 184, 0.35)',
+        borderRadius: '10px',
+        boxShadow: '0 10px 28px rgba(15, 23, 42, 0.12)',
+        px: 1.25,
+        py: 0.75,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Typography variant="body2" sx={{ m: 0, fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>
+        {name}
+        <Typography component="span" sx={{ color: '#64748b', fontWeight: 600 }}>
+          {' : '}
+        </Typography>
+        <Typography component="span" sx={{ fontWeight: 700, color: '#334155' }}>
+          {value}
+        </Typography>
+      </Typography>
+    </Box>
+  )
+}
+
 function DashboardDoughnutComponent({
   title,
   subtitle,
@@ -115,14 +144,7 @@ function DashboardDoughnutComponent({
                     <Cell key={`${entry.name}-${idx}`} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value, name) => [`${value}`, `${name}`]}
-                  contentStyle={{
-                    borderRadius: 10,
-                    border: '1px solid rgba(148, 163, 184, 0.35)',
-                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
-                  }}
-                />
+                <Tooltip content={PieSliceTooltip} isAnimationActive={false} wrapperStyle={{ outline: 'none', zIndex: 10 }} />
                 <Legend
                   verticalAlign="bottom"
                   height={isModuleTriplet ? 52 : 32}
@@ -142,6 +164,7 @@ function DashboardDoughnutComponent({
                 left: 0,
                 right: 0,
                 top: { xs: '36%', sm: '38%' },
+                zIndex: 0,
                 pointerEvents: 'none',
                 transform: 'translateY(-50%)',
               }}

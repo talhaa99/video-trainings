@@ -94,11 +94,16 @@ function DashboardAnalyticsChartsComponent({ analytics }) {
                     />
                     <Tooltip
                       cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
+                      wrapperStyle={{ outline: 'none' }}
                       contentStyle={{
+                        backgroundColor: '#ffffff',
+                        opacity: 1,
                         borderRadius: 10,
                         border: '1px solid rgba(148, 163, 184, 0.35)',
-                        boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
+                        boxShadow: '0 10px 28px rgba(15, 23, 42, 0.12)',
                       }}
+                      labelStyle={{ color: '#0f172a', fontWeight: 700 }}
+                      itemStyle={{ color: '#334155', fontWeight: 600 }}
                     />
                     <Bar dataKey="count" name="New registrations" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={48} />
                   </BarChart>
